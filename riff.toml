@@ -1,0 +1,17 @@
+# riff configuration. Codes and prefixes follow ruff semantics: select/ignore accept
+# either full codes (JEV001) or prefixes (JEV, RIF1). Command-line flags override this file.
+
+# Leave `select` unset to run every default-on rule. Uncomment to restrict.
+# select = ["RIF", "WRD", "CLR", "JEV"]
+
+ignore = []            # e.g. ["WRD001"] to stop flagging overused vocabulary
+extend-select = []     # e.g. ["WRD104"] to turn on passive-voice detection
+jev = true             # set false (or pass --no-jev) to skip the semantic rules
+model = "jev-latest"
+
+max-sentence-words = 45
+max-reading-grade = 14
+
+[thresholds]
+# Per-rule Jev sensitivity (0..1). Higher = fewer, more confident flags.
+# JEV001 = 0.7
