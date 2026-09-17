@@ -115,9 +115,39 @@ JEV001 = 0.7
 JEV103 = 0.75
 ```
 
+## Custom rules
+
+The built-in rules are deliberately generic. Anything specific to your team,
+house style, or domain you add in your own `riff.toml` with `[[custom_rules]]`. No
+code changes, no fork. Two kinds:
+
+```toml
+# A Jev rule: a yes/no question asked about your text (needs TYPESAFE_API_KEY).
+[[custom_rules]]
+code = "TEAM001"
+name = "no-competitor-names"
+type = "jev"
+summary = "Names a competitor"
+question = "Does this passage name a specific competing product or company?"
+threshold = 0.6
+scope = "block"      # "block" (per paragraph) or "document" (once over the whole text)
+
+# A phrase rule: literal strings flagged offline, no API key needed.
+[[custom_rules]]
+code = "TEAM002"
+name = "house-style-bans"
+type = "phrase"
+summary = "House-style banned phrase"
+phrases = ["circle back", "synergy", "leverage", "boil the ocean"]
+```
+
+Custom codes must not collide with a built-in code. They are enabled by default and
+obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
+`--select TEAM` runs only yours and `--ignore TEAM002` drops one.
+
 ## Rules
 
-48 rules (42 semantic, 6 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
+52 rules (46 semantic, 6 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
 
 ### CLR — Clarity metrics (arithmetic Jev can't do)
 
@@ -140,6 +170,7 @@ JEV103 = 0.75
 | `JEV007` | fractal-summary | · | Jev | Restates itself at the start or end of a section | tropes.fyi |
 | `JEV008` | enumerated-prose |   | Jev | A listicle disguised as prose ("The first… The second…") | tropes.fyi |
 | `JEV009` | never-ending-conclusion | · | Jev | The ending stacks clause after clause instead of stopping | tropes.fyi |
+| `JEV010` | formulaic-structure |   | Jev | Follows a formulaic template, hitting every expected beat in order | tropes.fyi |
 | `JEV101` | stakes-inflation |   | Jev | Inflates ordinary stakes to world-historical significance | tropes.fyi |
 | `JEV102` | invented-concept-label |   | Jev | Coins an abstract term as if it were established | tropes.fyi |
 | `JEV103` | quotable-bait |   | Jev | A standalone quotable line that carries no real information | tropes.fyi |
@@ -149,12 +180,15 @@ JEV103 = 0.75
 | `JEV107` | rule-of-three | · | Jev | Stacks parallel triples (tricolons) back to back | tropes.fyi |
 | `JEV108` | false-suspense |   | Jev | A "here's the kicker" transition promising a revelation | tropes.fyi |
 | `JEV109` | pedagogical-voice |   | Jev | A hand-holding, teacher-to-student voice | tropes.fyi |
+| `JEV111` | formulaic-close |   | Jev | A canned, low-pressure sign-off | tropes.fyi |
 | `JEV110` | futurist-invitation | · | Jev | "Imagine a world where…" salesmanship | tropes.fyi |
 | `JEV201` | one-point-dilution | · | Jev | Restates one idea several ways without adding anything | tropes.fyi |
 | `JEV202` | superficial-analysis |   | Jev | Attaches hollow significance to a mundane fact | tropes.fyi |
 | `JEV203` | despite-challenges | · | Jev | Raises a problem only to immediately wave it away | tropes.fyi |
 | `JEV204` | vague-attribution |   | Jev | Attributes a claim to an unnamed authority | tropes.fyi |
 | `JEV205` | appeal-to-familiarity | · | Jev | Asserts canonical status without evidence | tropes.fyi |
+| `JEV207` | generic-boilerplate |   | Jev | Interchangeable boilerplate that could describe almost anyone | tropes.fyi |
+| `JEV208` | faux-personalization | · | Jev | Sprinkles specifics to seem researched without genuine detail | tropes.fyi |
 | `JEV206` | rapid-fire-analogies | · | Jev | Lists historical companies or shifts to build false authority | tropes.fyi |
 | `JEV301` | ai-vocabulary |   | Jev | Overused AI filler vocabulary used as filler | tropes.fyi |
 | `JEV302` | magic-adverb |   | Jev | An adverb inflating significance ('quietly', 'fundamentally') | tropes.fyi |

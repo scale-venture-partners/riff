@@ -46,3 +46,22 @@ async def test_strunk_white_rule_detected_live():
     findings, stats = await run_jev(doc, ["JEV502"], settings)
     assert stats["calls"] >= 1
     assert "JEV502" in {f.code for f in findings}
+
+
+async def test_document_scope_rule_runs_once_live():
+    doc = extract_markdown(
+        "Hi there! I lead growth at Acme and noticed your team is scaling fast. "
+        "We help companies streamline onboarding. About us: 500+ customers and a Series A. "
+        "Would you be open to a quick chat next week?"
+    )
+    settings = Settings(select=("JEV010",))
+    findings, stats = await run_jev(doc, ["JEV010"], settings)
+    assert stats["calls"] == 1  # one call over the whole document, not per block
+    assert "JEV010" in {f.code for f in findings}
+
+
+async def test_formulaic_close_detected_live():
+    doc = extract_markdown("Let me know if that works, and no worries if now is not the right time.")
+    settings = Settings(select=("JEV111",))
+    findings, _ = await run_jev(doc, ["JEV111"], settings)
+    assert "JEV111" in {f.code for f in findings}
