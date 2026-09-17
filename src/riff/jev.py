@@ -68,7 +68,9 @@ async def run_jev(doc: Document, codes: list[str], settings: Settings, *, debug:
 
     from typesafe_sdk import AsyncTypeSafeClient, RetryPolicy, TypeSafeError
 
-    questions = build_questions(jev_codes)
+    block_codes = [c for c in jev_codes if REGISTRY[c].scope == "block"]
+    doc_codes = [c for c in jev_codes if REGISTRY[c].scope == "document"]
+    block_questions = build_questions(block_codes)
     targets = [b for b in doc.prose if b.word_count >= _MIN_WORDS and not _is_link_list(b.text)]
     stats = {"blocks": len(targets), "calls": 0, "input_tokens": 0, "skipped": 0, "errors": 0,
              "error_detail": [], "probabilities": []}
@@ -84,7 +86,7 @@ async def run_jev(doc: Document, codes: list[str], settings: Settings, *, debug:
                 return []
             async with sem:
                 try:
-                    resp = await client.system_one(block.text, questions)
+                    resp = await client.system_one(block.text, block_questions)
                 except TypeSafeError as exc:
                     stats["errors"] += 1
                     stats["error_detail"].append(f"{block.location()}: {type(exc).__name__}: {exc}")
@@ -92,15 +94,45 @@ async def run_jev(doc: Document, codes: list[str], settings: Settings, *, debug:
             stats["calls"] += 1
             stats["input_tokens"] += resp.usage.input_tokens
             if debug:
-                for c in jev_codes:
+                for c in block_codes:
                     a = resp.answers.get(c)
                     if a is not None and hasattr(a, "noul"):
                         stats["probabilities"].append((block.line, c, round(float(a.noul), 3)))
-            return _findings_for_block(doc, block, resp, jev_codes, settings)
+            return _findings_for_block(doc, block, resp, block_codes, settings)
 
-        for result in await asyncio.gather(*(one(b) for b in targets)):
+        tasks = [one(b) for b in targets]
+        if doc_codes:
+            tasks.append(_run_document_scope(client, doc, doc_codes, settings, stats, debug))
+        for result in await asyncio.gather(*tasks):
             findings.extend(result)
     return findings, stats
+
+
+async def _run_document_scope(client, doc: Document, codes: list[str], settings: Settings,
+                              stats: dict, debug: bool) -> list[Finding]:
+    """Ask document-scope rules once over the whole prose, anchoring findings at the first block."""
+    from typesafe_sdk import TypeSafeError
+
+    prose = [b for b in doc.prose if not _is_link_list(b.text)]
+    text = "\n\n".join(b.text for b in prose).strip()
+    anchor = prose[0] if prose else (doc.blocks[0] if doc.blocks else None)
+    if not text or anchor is None or estimate_tokens(text) > _MAX_STATE_TOKENS:
+        stats["skipped"] += 1
+        return []
+    try:
+        resp = await client.system_one(text, build_questions(codes))
+    except TypeSafeError as exc:
+        stats["errors"] += 1
+        stats["error_detail"].append(f"document: {type(exc).__name__}: {exc}")
+        return []
+    stats["calls"] += 1
+    stats["input_tokens"] += resp.usage.input_tokens
+    if debug:
+        for c in codes:
+            a = resp.answers.get(c)
+            if a is not None and hasattr(a, "noul"):
+                stats["probabilities"].append((anchor.line, c, round(float(a.noul), 3)))
+    return _findings_for_block(doc, anchor, resp, codes, settings)
 
 
 def _findings_for_block(doc: Document, block: Block, resp, codes: list[str], settings: Settings) -> list[Finding]:

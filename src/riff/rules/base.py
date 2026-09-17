@@ -54,6 +54,8 @@ class Rule:
     threshold: float = 0.6
     # Static rules: a checker over a Document and the active Settings.
     check: Checker | None = field(default=None, compare=False)
+    # True for rules declared by a user in riff.toml, not shipped with riff.
+    custom: bool = False
 
     @property
     def prefix(self) -> str:
@@ -68,6 +70,56 @@ def register(rule: Rule) -> Rule:
         raise ValueError(f"duplicate rule code {rule.code}")
     REGISTRY[rule.code] = rule
     return rule
+
+
+def register_custom_rules(specs: list[Mapping[str, Any]]) -> list[str]:
+    """Register user-defined rules from riff.toml [[custom_rules]]. Idempotent per code.
+
+    Two kinds:
+      type = "jev"     -> a Noul question (needs an API key at run time), with optional scope/threshold.
+      type = "phrase"  -> literal phrases flagged offline, no key needed.
+    A custom code must not collide with a built-in one.
+    """
+    added = []
+    for spec in specs:
+        code = str(spec.get("code", "")).strip()
+        if not code:
+            raise ValueError("custom rule is missing a 'code'")
+        existing = REGISTRY.get(code)
+        if existing is not None:
+            if existing.custom:
+                added.append(code)  # already registered from an earlier load; leave it
+                continue
+            raise ValueError(f"custom rule {code} collides with a built-in rule; choose another code")
+        kind = str(spec.get("type", "jev")).lower()
+        name = str(spec.get("name", code))
+        summary = str(spec.get("summary", name))
+        severity = str(spec.get("severity", "warning"))
+        if kind == "phrase":
+            phrases = spec.get("phrases") or []
+            if not phrases:
+                raise ValueError(f"custom phrase rule {code} needs a non-empty 'phrases' list")
+            rule = Rule(
+                code=code, name=name, summary=summary, category="Custom", source="custom (riff.toml)",
+                kind="static", severity=severity, custom=True,
+                check=phrase_check(code, phrase_pattern([str(p) for p in phrases]), summary + " ('{match}')"),
+            )
+        elif kind == "jev":
+            question = spec.get("question")
+            if not question:
+                raise ValueError(f"custom jev rule {code} needs a 'question'")
+            scope = str(spec.get("scope", "block"))
+            rule = Rule(
+                code=code, name=name, summary=summary, category="Custom", source="custom (riff.toml)",
+                kind="jev", scope=scope, severity=severity, custom=True,
+                question={"question": str(question)} if isinstance(question, str) else question,
+                threshold=float(spec.get("threshold", 0.6)),
+            )
+        else:
+            raise ValueError(f"custom rule {code}: unknown type {kind!r} (use 'jev' or 'phrase')")
+        register(rule)
+        added.append(code)
+    return added
 
 
 def jev_rule(

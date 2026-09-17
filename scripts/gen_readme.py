@@ -136,6 +136,36 @@ JEV001 = 0.7
 JEV103 = 0.75
 ```
 
+## Custom rules
+
+The built-in rules are deliberately generic. Anything specific to your team,
+house style, or domain you add in your own `riff.toml` with `[[custom_rules]]`. No
+code changes, no fork. Two kinds:
+
+```toml
+# A Jev rule: a yes/no question asked about your text (needs TYPESAFE_API_KEY).
+[[custom_rules]]
+code = "TEAM001"
+name = "no-competitor-names"
+type = "jev"
+summary = "Names a competitor"
+question = "Does this passage name a specific competing product or company?"
+threshold = 0.6
+scope = "block"      # "block" (per paragraph) or "document" (once over the whole text)
+
+# A phrase rule: literal strings flagged offline, no API key needed.
+[[custom_rules]]
+code = "TEAM002"
+name = "house-style-bans"
+type = "phrase"
+summary = "House-style banned phrase"
+phrases = ["circle back", "synergy", "leverage", "boil the ocean"]
+```
+
+Custom codes must not collide with a built-in code. They are enabled by default and
+obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
+`--select TEAM` runs only yours and `--ignore TEAM002` drops one.
+
 """
 
 SOURCES = """\

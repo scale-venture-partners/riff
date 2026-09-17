@@ -126,6 +126,20 @@ jev_rule(
     },
 )
 
+jev_rule(
+    "JEV010", "formulaic-structure", "Follows a formulaic template, hitting every expected beat in order",
+    category="Composition", source=T, threshold=0.65, scope="document",
+    explanation="Whole-message tell: an AI-generated piece that marches through the canonical beats of its genre "
+    "(for outreach: intro, a flattering observation, a thesis, boilerplate about the sender, a soft ask) in order. "
+    "Asked once over the whole document, since the tell is the overall shape, not any one paragraph.",
+    examples=("A cold email that introduces, flatters, pitches a thesis, recites who-we-are, then asks for a chat.",),
+    question={
+        "question": "Does this whole piece read as a formulaic, AI-generated message that marches through the "
+        "standard beats of its genre in the expected order, rather than being shaped by what it actually needs to say?",
+        "not_for": "A piece with a natural, purpose-driven structure, even if it is conventional.",
+    },
+)
+
 # ---------------------------------------------------------------- tone / voice (JEV1xx)
 
 jev_rule(
@@ -229,6 +243,18 @@ jev_rule(
 )
 
 jev_rule(
+    "JEV111", "formulaic-close", "A canned, low-pressure sign-off",
+    category="Tone", source=T, threshold=0.68,
+    explanation="The interchangeable outreach closer: 'no agenda', 'no pressure', 'happy to hop on a call', "
+    "'whatever works for you', 'let me know if that works'.",
+    examples=("No agenda beyond getting acquainted.", "Happy to do a call too if that's easier."),
+    question={
+        "question": "Does this end with a canned, low-pressure sign-off of the kind found in template outreach "
+        "('no agenda', 'no pressure', 'happy to hop on a call', 'whatever works for you', 'let me know')?",
+    },
+)
+
+jev_rule(
     "JEV110", "futurist-invitation", "\"Imagine a world where…\" salesmanship",
     category="Tone", source=T, threshold=0.72, default=False,
     explanation="The classic 'Imagine…' invitation followed by a list of wonders if the reader agrees.",
@@ -290,6 +316,31 @@ jev_rule(
     question={
         "question": "Does this passage assert that something is well-known, canonical, or famous ('a classic', "
         "'famously', 'notoriously', 'as we all know') to lend it weight, without giving evidence?",
+    },
+)
+
+jev_rule(
+    "JEV207", "generic-boilerplate", "Interchangeable boilerplate that could describe almost anyone",
+    category="Substance", source=T, threshold=0.7,
+    explanation="Language so generic it would fit any organization, product, or person in the category, carrying no "
+    "distinguishing specifics.",
+    examples=("We partner with our customers to drive outcomes and deliver value at every stage of the journey.",),
+    question={
+        "question": "Is this passage interchangeable boilerplate — phrasing so generic it could describe almost any "
+        "organization, product, or person of its kind, without any distinguishing specifics?",
+        "not_for": "A concrete, specific description tied to this particular subject.",
+    },
+)
+
+jev_rule(
+    "JEV208", "faux-personalization", "Sprinkles specifics to seem researched without genuine detail",
+    category="Substance", source=T, threshold=0.7, default=False,
+    explanation="Outreach tell: name-dropping specific people, companies, or facts to appear personally researched, "
+    "while the personalization stays shallow or decorative.",
+    examples=("I saw you were at [Company] back in the day, so the name probably rings a bell.",),
+    question={
+        "question": "Does this drop specific names, companies, or facts to appear personally researched, while the "
+        "personalization stays shallow or decorative rather than reflecting genuine specific knowledge?",
     },
 )
 

@@ -7,6 +7,15 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Generic message-level rules: `JEV010` formulaic (template) structure, `JEV111`
+  canned low-pressure sign-off, `JEV207` interchangeable boilerplate, and `JEV208`
+  faux-personalization. These catch AI-shaped outreach that is clean sentence by
+  sentence.
+- Document-scope Jev rules: a rule can be asked once over the whole text (`scope =
+  "document"`), not just per paragraph.
+- Custom rules: define your own `[[custom_rules]]` in `riff.toml` (a Jev question or
+  a list of banned phrases) without touching the codebase. Firm- or domain-specific
+  checks live here; the built-in rules stay generic.
 - Initial release: a prose linter with ruff-style rule codes over Markdown, plain
   text, HTML, Word (`.docx`), and PowerPoint (`.pptx`).
 - 48 rules: 42 semantic rules answered by TypeSafe's Jev model and 6 deterministic

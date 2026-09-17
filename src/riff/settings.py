@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from riff.rules import load_rules
-from riff.rules.base import REGISTRY
+from riff.rules.base import REGISTRY, register_custom_rules
 
 CONFIG_NAMES = ("riff.toml", ".riff.toml")
 
@@ -96,6 +96,10 @@ def load_settings(explicit: Path | None = None, start: Path | None = None) -> Se
     data = tomllib.loads(path.read_text())
     table = data.get("tool", {}).get("riff", data) if path.name == "pyproject.toml" else data.get("tool", {}).get("riff", data)
     thresholds = {str(k): float(v) for k, v in (table.get("thresholds") or {}).items()}
+    load_rules()
+    custom = table.get("custom_rules") or table.get("custom-rules") or []
+    if custom:
+        register_custom_rules(list(custom))
     return Settings(
         select=_as_tuple(table.get("select")),
         ignore=_as_tuple(table.get("ignore")),
