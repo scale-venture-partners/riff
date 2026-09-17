@@ -26,13 +26,42 @@ Jev: 14 calls, 9,210 input tokens (~$0.0004)
 
 ## Install
 
+riff is **not on PyPI yet**, so install it from source. It uses
+[uv](https://docs.astral.sh/uv/).
+
+**Clone and run:**
+
 ```console
-uv tool install riff-lint     # once published (the `riff` name is taken on PyPI); installs the `riff` command
-# or, from a clone:
-uv sync && uv run riff --help
+git clone https://github.com/scale-venture-partners/riff
+cd riff
+uv sync
+uv run riff --help
+uv run riff draft.md
 ```
 
+**Run directly from GitHub, no clone,** with uvx (the repo is private, so this uses
+your existing GitHub credentials via git):
+
+```console
+uvx --from git+https://github.com/scale-venture-partners/riff riff draft.md
+# SSH works too, if that's how you authenticate to GitHub:
+uvx --from git+ssh://git@github.com/scale-venture-partners/riff riff draft.md
+```
+
+To install it as a persistent `riff` command on your PATH from the repo:
+
+```console
+uv tool install git+https://github.com/scale-venture-partners/riff
+riff --help
+```
+
+When riff is published to PyPI, `uv tool install riff-lint` will install the same
+`riff` command (the `riff` name itself is taken on PyPI).
+
 ## Usage
+
+The examples below assume `riff` is on your PATH (via `uv tool install` above). From a
+clone without installing, prefix each with `uv run` (e.g. `uv run riff draft.md`).
 
 ```console
 riff draft.md                    # lint one file (positional)
