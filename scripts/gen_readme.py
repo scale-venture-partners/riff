@@ -112,10 +112,10 @@ one at <https://console.typesafe.ai/>). Without it, `--no-jev` runs the static r
 you select a Jev rule with no key, riff stops and tells you the two ways to fix it rather than
 degrading silently.
 
-Each Jev rule is one yes/no (Noul) question asked about a single paragraph, phrased so a high
-probability means the tell is present. riff prints that probability (`p=0.93`) on every Jev
-finding, and you can set a per-rule `threshold` to tune sensitivity against your own writing.
-The document text is sent to the API as data; treat any content you lint accordingly.
+Each Jev rule is one yes/no (Noul) question asked about a single paragraph. It is phrased so a
+high probability means the tell is present. riff prints that probability (`p=0.93`) on every Jev
+finding, and you set a per-rule `threshold` to tune sensitivity. The document text is sent to the
+API as data; treat any content you lint accordingly.
 
 ## Configuration
 
@@ -196,7 +196,7 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 SOURCES = """\
 ## Sources
 
-The rule set draws on two catalogs of writing problems:
+The rule set comes from tropes.fyi, Williams, and Strunk & White:
 
 - AI writing tells, from [tropes.fyi](https://tropes.fyi/tropes-md): negative parallelism,
   em-dash addiction, magic adverbs, signposted conclusions, and the rest.
@@ -212,8 +212,8 @@ facts in markup, cross-document duplicate detection, and arithmetic metrics (sen
 
 ### Sources by document type
 
-The type-specific rules (and the type-gating in general) are mined from a seminal style text for
-each kind of writing. Where a form has no single canonical work, we cite the recognized guide or
+The type-specific rules are mined from a style text per document type — Minto for reports, Ogilvy
+for marketing, Hargis for docs, and so on. Where a form has no single canonical work, we cite the recognized guide or
 convention. A rule may cite more than one source, and these overlap with the general catalog above.
 
 | Type | Source(s) mined |

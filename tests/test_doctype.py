@@ -144,3 +144,14 @@ def test_type_samples_extract_and_are_plausible():
     for f in files:
         doc = extract(f)
         assert doc.word_count > 3, f
+
+
+def test_promotional_and_terse_gating():
+    # Promotional language is expected in ad copy; boilerplate/abstraction rules skip terse genres.
+    assert set(REGISTRY["JEV304"].skip_for) >= {"marketing_copy", "product_description", "social_post"}
+    assert rule_applies(REGISTRY["JEV304"], "marketing_copy") is False
+    assert rule_applies(REGISTRY["JEV304"], "essay") is True
+    for code in ("JEV207", "JEV502"):
+        assert "notes" in REGISTRY[code].skip_for
+        assert "script" in REGISTRY[code].skip_for
+        assert rule_applies(REGISTRY[code], "notes") is False

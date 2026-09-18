@@ -335,14 +335,16 @@ jev_rule(
 
 jev_rule(
     "JEV207", "generic-boilerplate", "Interchangeable boilerplate that could describe almost anyone",
-    category="Substance", source=T, threshold=0.7,
+    category="Substance", source=T, threshold=0.75,
+    skip_for=("notes", "sms", "chat_message", "script"),
     explanation="Language so generic it would fit any organization, product, or person in the category, carrying no "
     "distinguishing specifics.",
     examples=("We partner with our customers to drive outcomes and deliver value at every stage of the journey.",),
     question={
         "question": "Is this passage interchangeable boilerplate — phrasing so generic it could describe almost any "
         "organization, product, or person of its kind, without any distinguishing specifics?",
-        "not_for": "A concrete, specific description tied to this particular subject.",
+        "not_for": "A conventional greeting, sign-off, or closing; a short functional or transactional line "
+        "(an instruction, a cross-reference, a spec); or a concrete, specific description.",
     },
 )
 
@@ -411,6 +413,7 @@ jev_rule(
 jev_rule(
     "JEV304", "promotional-language", "Reads like marketing copy rather than description",
     category="Tone", source=T, threshold=0.68,
+    skip_for=("marketing_copy", "product_description", "social_post", "press_release"),
     explanation="Selling the subject instead of describing it: 'all-in-one', 'unprecedented', 'seamless experience'.",
     examples=("an all-in-one solution that unlocks unprecedented productivity",),
     question={
@@ -526,7 +529,8 @@ jev_rule(
 
 jev_rule(
     "JEV502", "vague-abstraction", "Abstract, general language where concrete detail would serve",
-    category="Substance", source=E, threshold=0.7,
+    category="Substance", source=E, threshold=0.72,
+    skip_for=("notes", "sms", "chat_message", "script"),
     explanation="Elements of Style, rule 16: use definite, specific, concrete language. Prefer the particular fact "
     "to the vague generality; 'a period of unfavorable weather' → 'it rained every day for a week'.",
     examples=("The situation developed in an unsatisfactory manner.",
@@ -534,7 +538,8 @@ jev_rule(
     question={
         "question": "Is this passage written in vague, abstract, or general terms where concrete, specific, definite "
         "language would carry more meaning?",
-        "not_for": "A passage that is already specific, or a necessary high-level summary backed by concrete detail nearby.",
+        "not_for": "A deliberately terse note, list item, heading, or fragment; a greeting, closing, or short "
+        "functional line; a passage that is already specific or a lead-in whose specifics follow immediately.",
     },
 )
 

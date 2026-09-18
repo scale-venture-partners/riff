@@ -7,6 +7,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Tuned rules from a full per-type dogfood: `JEV304` (promotional) skips ad-copy types where
+  selling is the point; `JEV207` (boilerplate) and `JEV502` (abstraction) skip terse genres
+  (notes, SMS, chat, script) and no longer flag conventional sign-offs or functional lines.
+  Cleared the false positives this surfaced on riff's own README (35 to 1).
 - Calibrated the documentation rules against riff's own README (dogfooding): `JEV601` and
   `JEV602` are now opt-in (they over-fired on real docs), `JEV001` skips `documentation`, and
   `samples/types/` now holds a neutral public example of every supported document type.
