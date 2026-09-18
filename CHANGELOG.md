@@ -6,6 +6,11 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+- Raised the `JEV502` (vague-abstraction) threshold to 0.85. On a corpus of real professional
+  documents it was the most-fired rule and flagged concrete text, so it now triggers only on
+  strong cases; egregious vagueness still fires.
+
 ### Added
 - Tuned rules from a full per-type dogfood: `JEV304` (promotional) skips ad-copy types where
   selling is the point; `JEV207` (boilerplate) and `JEV502` (abstraction) skip terse genres

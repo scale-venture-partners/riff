@@ -529,7 +529,7 @@ jev_rule(
 
 jev_rule(
     "JEV502", "vague-abstraction", "Abstract, general language where concrete detail would serve",
-    category="Substance", source=E, threshold=0.72,
+    category="Substance", source=E, threshold=0.85,
     skip_for=("notes", "sms", "chat_message", "script"),
     explanation="Elements of Style, rule 16: use definite, specific, concrete language. Prefer the particular fact "
     "to the vague generality; 'a period of unfavorable weather' → 'it rained every day for a week'.",
