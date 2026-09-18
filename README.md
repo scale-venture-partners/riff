@@ -1,7 +1,7 @@
 # riff
 
 [![CI](https://github.com/scale-venture-partners/riff/actions/workflows/ci.yml/badge.svg)](https://github.com/scale-venture-partners/riff/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-00C756.svg)](LICENSE)
 
 A small, fast prose linter. It reads a document, flags the writing tells and clarity
 problems it finds, and reports them with **ruff-style rule codes** you can select, ignore,
