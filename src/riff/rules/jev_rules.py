@@ -574,3 +574,128 @@ jev_rule(
         "'either/or' pair — in mismatched grammatical forms that should be parallel?",
     },
 )
+
+# ---------------------------------------------------------------- form-specific rules (JEV6xx)
+# Mined from seminal style texts for particular document types; each is gated with applies_to so it
+# runs only on the kind of writing it is about. Sources are cited per rule; more than one is fine.
+
+HARGIS = "Hargis et al., Developing Quality Technical Information (IBM)"
+
+jev_rule(
+    "JEV601", "not-task-oriented", "Documentation that describes the thing instead of telling the reader how to use it",
+    category="Documentation", source=HARGIS, threshold=0.7, applies_to=("documentation",),
+    explanation="Task orientation: docs should help the reader accomplish a task, not just catalog what a "
+    "component is. Sources: Hargis et al., Developing Quality Technical Information; Google and Microsoft style guides.",
+    examples=("The Config object is a container that holds settings for host, port, and timeout.",),
+    question={
+        "question": "Does this documentation mainly describe what a component or feature IS, rather than telling the "
+        "reader how to accomplish a task with it?",
+        "not_for": "A reference entry or conceptual overview that is meant to describe or explain.",
+    },
+)
+
+jev_rule(
+    "JEV602", "undefined-term", "An acronym or specialized term used without being defined on first use",
+    category="Documentation", source=f"{HARGIS}; Microsoft Writing Style Guide", threshold=0.7,
+    applies_to=("documentation", "report", "academic_paper"),
+    explanation="Clarity/completeness: expand an acronym or define a specialized term the first time it appears. "
+    "Sources: Hargis et al., Developing Quality Technical Information; Microsoft Writing Style Guide.",
+    examples=("Enable RBAC and apply the CRD before the DaemonSet rolls out.",),
+    question={
+        "question": "Does this introduce an acronym, abbreviation, or specialized term without expanding or defining "
+        "it on first use, in a way that would leave a new reader guessing?",
+    },
+)
+
+jev_rule(
+    "JEV610", "buried-conclusion", "Makes the reader work through context before stating the conclusion",
+    category="Composition", source="Minto, The Pyramid Principle; Garner, HBR Guide to Better Business Writing",
+    threshold=0.7, scope="document", applies_to=("report", "memo"),
+    explanation="Answer-first / bottom-line-up-front: a report or memo should lead with its recommendation or "
+    "conclusion, then support it. Sources: Minto, The Pyramid Principle; Garner, HBR Guide to Better Business Writing.",
+    examples=("Weeks of survey, log review, and debate … and only at the end: 'we should adopt structured logging.'",),
+    question={
+        "question": "Does this piece make the reader work through background, evidence, or process before it states "
+        "its main conclusion or recommendation, instead of leading with the answer?",
+        "not_for": "A piece whose main point is already stated at or near the start.",
+    },
+)
+
+jev_rule(
+    "JEV620", "editorializing", "Opinion or loaded language inserted into what is presented as reporting",
+    category="Substance", source="AP Stylebook; Kovach & Rosenstiel, The Elements of Journalism",
+    threshold=0.7, applies_to=("article", "press_release"),
+    explanation="News and press writing report; they don't judge. Loaded adjectives and the writer's opinion do not "
+    "belong in factual reporting. Sources: AP Stylebook; Kovach & Rosenstiel, The Elements of Journalism.",
+    examples=("The company's disastrous and frankly embarrassing rollout proves management still doesn't get it.",),
+    question={
+        "question": "Does this insert the writer's opinion, or loaded and judgmental adjectives, into what is "
+        "presented as factual reporting?",
+        "not_for": "A clearly labelled opinion piece, editorial, or a directly attributed quotation.",
+    },
+)
+
+jev_rule(
+    "JEV630", "feature-not-benefit", "Lists features without translating them into a benefit to the reader",
+    category="Substance", source="Ogilvy, Ogilvy on Advertising; Bly, The Copywriter's Handbook",
+    threshold=0.7, applies_to=("marketing_copy", "product_description"),
+    explanation="Sell the benefit, not the spec: copy should say what a feature does for the reader. Sources: "
+    "Ogilvy, Ogilvy on Advertising; Bly, The Copywriter's Handbook.",
+    examples=("The X200 has a 3nm chip, 16GB RAM, a 6.1-inch OLED panel, and an IP68 rating.",),
+    question={
+        "question": "Does this list product features or specifications without translating them into a concrete "
+        "benefit or outcome for the reader or customer?",
+        "not_for": "A spec sheet or table whose explicit purpose is to list specifications.",
+    },
+)
+
+jev_rule(
+    "JEV640", "on-the-nose-dialogue", "Dialogue that states feelings or plot directly instead of implying them",
+    category="Substance", source="McKee, Story; Field, Screenplay", threshold=0.72, applies_to=("script",),
+    explanation="On-the-nose dialogue says outright what should be implied by subtext or action. Sources: "
+    "McKee, Story; Field, Screenplay.",
+    examples=("\"I am so angry at you right now because you forgot my birthday,\" she said.",),
+    question={
+        "question": "Does the dialogue here state characters' feelings, motives, or the plot directly and literally, "
+        "where subtext or implication would be stronger?",
+    },
+)
+
+jev_rule(
+    "JEV650", "forced-rhyme", "Rhyme that distorts word choice or syntax to hit the rhyme",
+    category="Word Choice", source="Oliver, A Poetry Handbook; Fry, The Ode Less Travelled",
+    threshold=0.72, applies_to=("poem",),
+    explanation="A rhyme that bends meaning or word order just to land the sound. Sources: Oliver, A Poetry "
+    "Handbook; Fry, The Ode Less Travelled.",
+    examples=("Inverted syntax or an odd word chosen only because it rhymes with the line before.",),
+    question={
+        "question": "Does this verse distort its word choice or syntax — an unnatural word or inverted phrasing — "
+        "mainly to make a rhyme land?",
+    },
+)
+
+jev_rule(
+    "JEV660", "vague-changelog-entry", "A release note that says nothing specific ('various improvements')",
+    category="Substance", source="Keep a Changelog (keepachangelog.com)",
+    threshold=0.7, applies_to=("release_notes",),
+    explanation="A changelog entry should say what changed. 'Various improvements and bug fixes' tells the reader "
+    "nothing. Source: Keep a Changelog (keepachangelog.com).",
+    examples=("- Various improvements and bug fixes", "- Minor changes"),
+    question={
+        "question": "Is this release-note or changelog entry vague ('various improvements', 'bug fixes', 'minor "
+        "changes') instead of stating what specifically changed?",
+    },
+)
+
+jev_rule(
+    "JEV670", "weak-resume-bullet", "A resume entry with no strong action verb or concrete result",
+    category="Substance", source="Resume conventions (strong action verbs, quantified results)",
+    threshold=0.7, applies_to=("resume",),
+    explanation="Resume bullets should lead with a strong action verb and state a concrete, ideally quantified "
+    "result, not 'Responsible for' or 'Helped with'. Source: widely-held resume conventions.",
+    examples=("Responsible for helping with various marketing tasks and assisting the team as needed.",),
+    question={
+        "question": "Does this resume entry lead with a weak phrase like 'Responsible for' or 'Helped with', or "
+        "otherwise lack a strong action verb and a concrete or quantified result?",
+    },
+)

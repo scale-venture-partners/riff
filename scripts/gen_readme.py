@@ -210,6 +210,29 @@ so anything that depends on meaning or context is a model question, not a regex.
 genuinely cannot do stays in code — exact glyphs it never sees (curly quotes, arrows), structural
 facts in markup, cross-document duplicate detection, and arithmetic metrics (sentence length, grade).
 
+### Sources by document type
+
+The type-specific rules (and the type-gating in general) are mined from a seminal style text for
+each kind of writing. Where a form has no single canonical work, we cite the recognized guide or
+convention. A rule may cite more than one source, and these overlap with the general catalog above.
+
+| Type | Source(s) mined |
+|---|---|
+| essay, book_chapter | Zinsser, *On Writing Well*; King, *On Writing* |
+| article, press_release | *AP Stylebook*; Kovach & Rosenstiel, *The Elements of Journalism* |
+| report, memo | Minto, *The Pyramid Principle*; Garner, *HBR Guide to Better Business Writing* |
+| academic_paper | Sword, *Stylish Academic Writing*; Williams, *Style* |
+| documentation | Hargis et al., *Developing Quality Technical Information* (IBM); Microsoft / Google style guides |
+| marketing_copy, product_description | Ogilvy, *Ogilvy on Advertising*; Bly, *The Copywriter's Handbook* |
+| script | McKee, *Story*; Field, *Screenplay* |
+| poem | Oliver, *A Poetry Handbook*; Fry, *The Ode Less Travelled* |
+| release_notes | *Keep a Changelog*; *Semantic Versioning* |
+| email, letter | Shipley & Schwalbe, *Send*; Garner, *HBR Guide* |
+| blog_post, social_post | Handley, *Everybody Writes* |
+| review | Barnet, *A Short Guide to Writing About …* |
+| sms, chat_message | Crystal, *Txtng: The Gr8 Db8*; McCulloch, *Because Internet* (descriptive, not prescriptive) |
+| resume | conventions: strong action verbs, quantified results, no first person |
+
 ## Development
 
 ```console

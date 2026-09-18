@@ -7,6 +7,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Type-specific rules mined from seminal style texts (JEV601-JEV670): task orientation and
+  undefined terms (docs), buried conclusion (report/memo), editorializing (news), feature-not-
+  benefit (marketing), on-the-nose dialogue (script), forced rhyme (poem), vague changelog entry
+  (release notes), and weak resume bullets. Each cites its source(s); the README maps sources by type.
 - Document-type classification: riff detects the kind of writing (email, memo, SMS, essay,
   blog post, report, and ~20 more) with one Jev pass, and rules can gate on it via
   `applies_to` / `skip_for`. New `JEV112` flags a greeting or sign-off outside an email or

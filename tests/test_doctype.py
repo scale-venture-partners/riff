@@ -104,3 +104,22 @@ def test_unresolved_type_not_printed():
     buf = io.StringIO()
     render_text([LintResult(document=doc, findings=[])], stream=buf)  # default UNRESOLVED
     assert "type:" not in buf.getvalue()
+
+
+def test_form_specific_rules_registered_and_gated():
+    # The mined JEV6xx rules exist, cite a source, and are gated to their document type.
+    expected = {
+        "JEV601": ("documentation",),
+        "JEV610": ("report", "memo"),
+        "JEV620": ("article", "press_release"),
+        "JEV630": ("marketing_copy", "product_description"),
+        "JEV660": ("release_notes",),
+        "JEV670": ("resume",),
+    }
+    for code, types in expected.items():
+        r = REGISTRY[code]
+        assert r.applies_to == types
+        assert r.source  # a citation is present
+        assert rule_applies(r, types[0]) is True
+        assert rule_applies(r, "sms") is False        # not its type
+        assert rule_applies(r, None) is True          # unresolved runs everything

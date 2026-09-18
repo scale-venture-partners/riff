@@ -172,7 +172,7 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 
 ## Rules
 
-53 rules (47 semantic, 6 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
+62 rules (56 semantic, 6 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
 
 ### CLR — Clarity metrics (arithmetic Jev can't do)
 
@@ -233,6 +233,15 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV503` | weak-intensifier |   | Jev | Leans on 'very', 'rather', 'pretty', 'quite' for emphasis | Strunk & White, The Elements of Style |
 | `JEV504` | loose-sentence-chain | · | Jev | Two or more clauses strung together with and / but / so / which | Strunk & White, The Elements of Style |
 | `JEV505` | faulty-parallelism | · | Jev | Coordinate ideas in a series expressed in mismatched forms | Strunk & White, The Elements of Style |
+| `JEV601` | not-task-oriented |   | Jev | Documentation that describes the thing instead of telling the reader how to use it | Hargis et al., Developing Quality Technical Information (IBM) |
+| `JEV602` | undefined-term |   | Jev | An acronym or specialized term used without being defined on first use | Hargis et al., Developing Quality Technical Information (IBM); Microsoft Writing Style Guide |
+| `JEV610` | buried-conclusion |   | Jev | Makes the reader work through context before stating the conclusion | Minto, The Pyramid Principle; Garner, HBR Guide to Better Business Writing |
+| `JEV620` | editorializing |   | Jev | Opinion or loaded language inserted into what is presented as reporting | AP Stylebook; Kovach & Rosenstiel, The Elements of Journalism |
+| `JEV630` | feature-not-benefit |   | Jev | Lists features without translating them into a benefit to the reader | Ogilvy, Ogilvy on Advertising; Bly, The Copywriter's Handbook |
+| `JEV640` | on-the-nose-dialogue |   | Jev | Dialogue that states feelings or plot directly instead of implying them | McKee, Story; Field, Screenplay |
+| `JEV650` | forced-rhyme |   | Jev | Rhyme that distorts word choice or syntax to hit the rhyme | Oliver, A Poetry Handbook; Fry, The Ode Less Travelled |
+| `JEV660` | vague-changelog-entry |   | Jev | A release note that says nothing specific ('various improvements') | Keep a Changelog (keepachangelog.com) |
+| `JEV670` | weak-resume-bullet |   | Jev | A resume entry with no strong action verb or concrete result | Resume conventions (strong action verbs, quantified results) |
 
 ### RIF — Typography and structure (exact checks Jev can't see)
 
@@ -257,6 +266,29 @@ Almost every tell is a Jev judgment: pattern-matching misses paraphrases and fir
 so anything that depends on meaning or context is a model question, not a regex. Only what Jev
 genuinely cannot do stays in code — exact glyphs it never sees (curly quotes, arrows), structural
 facts in markup, cross-document duplicate detection, and arithmetic metrics (sentence length, grade).
+
+### Sources by document type
+
+The type-specific rules (and the type-gating in general) are mined from a seminal style text for
+each kind of writing. Where a form has no single canonical work, we cite the recognized guide or
+convention. A rule may cite more than one source, and these overlap with the general catalog above.
+
+| Type | Source(s) mined |
+|---|---|
+| essay, book_chapter | Zinsser, *On Writing Well*; King, *On Writing* |
+| article, press_release | *AP Stylebook*; Kovach & Rosenstiel, *The Elements of Journalism* |
+| report, memo | Minto, *The Pyramid Principle*; Garner, *HBR Guide to Better Business Writing* |
+| academic_paper | Sword, *Stylish Academic Writing*; Williams, *Style* |
+| documentation | Hargis et al., *Developing Quality Technical Information* (IBM); Microsoft / Google style guides |
+| marketing_copy, product_description | Ogilvy, *Ogilvy on Advertising*; Bly, *The Copywriter's Handbook* |
+| script | McKee, *Story*; Field, *Screenplay* |
+| poem | Oliver, *A Poetry Handbook*; Fry, *The Ode Less Travelled* |
+| release_notes | *Keep a Changelog*; *Semantic Versioning* |
+| email, letter | Shipley & Schwalbe, *Send*; Garner, *HBR Guide* |
+| blog_post, social_post | Handley, *Everybody Writes* |
+| review | Barnet, *A Short Guide to Writing About …* |
+| sms, chat_message | Crystal, *Txtng: The Gr8 Db8*; McCulloch, *Because Internet* (descriptive, not prescriptive) |
+| resume | conventions: strong action verbs, quantified results, no first person |
 
 ## Development
 
