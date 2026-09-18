@@ -127,10 +127,10 @@ Types let a rule apply to some kinds of writing and not others. A greeting and s
 normal in an **email** but a tell in a **memo** or **SMS**, so the built-in `JEV112` rule skips
 `email` and `letter` and flags a greeting anywhere else.
 
-- **Force the type** with `--type email` (or any type below). This skips classification, so it
+- Force the type with `--type email` (or any type below). This skips classification, so it
   needs no API key and is the escape hatch when the classifier is wrong or the input is a short
   excerpt.
-- **Turn classification off** with `--no-classify`. Type-specific rules then run everywhere,
+- Turn classification off with `--no-classify`. Type-specific rules then run everywhere,
   since the type is unresolved. An unresolved type never silently drops a rule.
 
 The type identifiers are: `sms`, `email`, `chat_message`, `memo`, `letter`, `essay`,
@@ -233,8 +233,8 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV503` | weak-intensifier |   | Jev | Leans on 'very', 'rather', 'pretty', 'quite' for emphasis | Strunk & White, The Elements of Style |
 | `JEV504` | loose-sentence-chain | · | Jev | Two or more clauses strung together with and / but / so / which | Strunk & White, The Elements of Style |
 | `JEV505` | faulty-parallelism | · | Jev | Coordinate ideas in a series expressed in mismatched forms | Strunk & White, The Elements of Style |
-| `JEV601` | not-task-oriented |   | Jev | Documentation that describes the thing instead of telling the reader how to use it | Hargis et al., Developing Quality Technical Information (IBM) |
-| `JEV602` | undefined-term |   | Jev | An acronym or specialized term used without being defined on first use | Hargis et al., Developing Quality Technical Information (IBM); Microsoft Writing Style Guide |
+| `JEV601` | not-task-oriented | · | Jev | Documentation that describes the thing instead of telling the reader how to use it | Hargis et al., Developing Quality Technical Information (IBM) |
+| `JEV602` | undefined-term | · | Jev | An acronym or specialized term used without being defined on first use | Hargis et al., Developing Quality Technical Information (IBM); Microsoft Writing Style Guide |
 | `JEV610` | buried-conclusion |   | Jev | Makes the reader work through context before stating the conclusion | Minto, The Pyramid Principle; Garner, HBR Guide to Better Business Writing |
 | `JEV620` | editorializing |   | Jev | Opinion or loaded language inserted into what is presented as reporting | AP Stylebook; Kovach & Rosenstiel, The Elements of Journalism |
 | `JEV630` | feature-not-benefit |   | Jev | Lists features without translating them into a benefit to the reader | Ogilvy, Ogilvy on Advertising; Bly, The Copywriter's Handbook |
@@ -255,11 +255,11 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 
 The rule set draws on two catalogs of writing problems:
 
-- **AI writing tells** from [tropes.fyi](https://tropes.fyi/tropes-md): negative parallelism,
+- AI writing tells, from [tropes.fyi](https://tropes.fyi/tropes-md): negative parallelism,
   em-dash addiction, magic adverbs, signposted conclusions, and the rest.
-- **Clarity and grace** from Joseph M. Williams, *Style: Lessons in Clarity and Grace*: wordy
+- Clarity and grace, from Joseph M. Williams, *Style: Lessons in Clarity and Grace*: wordy
   phrases, nominalizations, passive voice, sentence length, and readability.
-- **The Elements of Style** by Strunk & White: put statements in positive form, use concrete
+- The Elements of Style, by Strunk & White: put statements in positive form, use concrete
   language, cut weak intensifiers, avoid loose-sentence chains, and keep parallel form.
 
 Almost every tell is a Jev judgment: pattern-matching misses paraphrases and fires on look-alikes,

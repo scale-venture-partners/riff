@@ -1,0 +1,3 @@
+hey did the deploy go out? seeing 500s on staging
+yeah rolling back now, give me 5
+ok pinging you when it's green

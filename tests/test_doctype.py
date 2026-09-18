@@ -123,3 +123,24 @@ def test_form_specific_rules_registered_and_gated():
         assert rule_applies(r, types[0]) is True
         assert rule_applies(r, "sms") is False        # not its type
         assert rule_applies(r, None) is True          # unresolved runs everything
+
+
+def test_doc_rules_recalibrated_defaults():
+    # The documentation rules over-fired on real docs, so they are opt-in; preamble skips docs.
+    assert REGISTRY["JEV601"].default is False
+    assert REGISTRY["JEV602"].default is False
+    assert "documentation" in REGISTRY["JEV001"].skip_for
+
+
+def test_type_samples_extract_and_are_plausible():
+    # Guard the committed per-type sample docs: each must parse to prose.
+    from pathlib import Path
+
+    from riff.extract import extract
+
+    sample_dir = Path(__file__).resolve().parent.parent / "samples" / "types"
+    files = sorted(sample_dir.iterdir())
+    assert len(files) >= 20
+    for f in files:
+        doc = extract(f)
+        assert doc.word_count > 3, f

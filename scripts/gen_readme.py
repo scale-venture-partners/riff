@@ -148,10 +148,10 @@ Types let a rule apply to some kinds of writing and not others. A greeting and s
 normal in an **email** but a tell in a **memo** or **SMS**, so the built-in `JEV112` rule skips
 `email` and `letter` and flags a greeting anywhere else.
 
-- **Force the type** with `--type email` (or any type below). This skips classification, so it
+- Force the type with `--type email` (or any type below). This skips classification, so it
   needs no API key and is the escape hatch when the classifier is wrong or the input is a short
   excerpt.
-- **Turn classification off** with `--no-classify`. Type-specific rules then run everywhere,
+- Turn classification off with `--no-classify`. Type-specific rules then run everywhere,
   since the type is unresolved. An unresolved type never silently drops a rule.
 
 The type identifiers are: `sms`, `email`, `chat_message`, `memo`, `letter`, `essay`,
@@ -198,11 +198,11 @@ SOURCES = """\
 
 The rule set draws on two catalogs of writing problems:
 
-- **AI writing tells** from [tropes.fyi](https://tropes.fyi/tropes-md): negative parallelism,
+- AI writing tells, from [tropes.fyi](https://tropes.fyi/tropes-md): negative parallelism,
   em-dash addiction, magic adverbs, signposted conclusions, and the rest.
-- **Clarity and grace** from Joseph M. Williams, *Style: Lessons in Clarity and Grace*: wordy
+- Clarity and grace, from Joseph M. Williams, *Style: Lessons in Clarity and Grace*: wordy
   phrases, nominalizations, passive voice, sentence length, and readability.
-- **The Elements of Style** by Strunk & White: put statements in positive form, use concrete
+- The Elements of Style, by Strunk & White: put statements in positive form, use concrete
   language, cut weak intensifiers, avoid loose-sentence chains, and keep parallel form.
 
 Almost every tell is a Jev judgment: pattern-matching misses paraphrases and fires on look-alikes,

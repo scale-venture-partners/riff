@@ -7,6 +7,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Calibrated the documentation rules against riff's own README (dogfooding): `JEV601` and
+  `JEV602` are now opt-in (they over-fired on real docs), `JEV001` skips `documentation`, and
+  `samples/types/` now holds a neutral public example of every supported document type.
 - Type-specific rules mined from seminal style texts (JEV601-JEV670): task orientation and
   undefined terms (docs), buried conclusion (report/memo), editorializing (news), feature-not-
   benefit (marketing), on-the-nose dialogue (script), forced rhyme (poem), vague changelog entry

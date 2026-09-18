@@ -1,0 +1,5 @@
+- migration: replica cutover after freeze
+- load test numbers -> Priya by Thu
+- flags: kill-switch for billing path?
+- open q: retention on the new cohort, nobody has the data
+- follow up w/ platform team re: logging lib

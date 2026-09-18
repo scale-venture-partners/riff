@@ -26,7 +26,7 @@ E = "Strunk & White, The Elements of Style"
 
 jev_rule(
     "JEV001", "preamble", "Announces what it is about to say instead of saying it",
-    category="Composition", source=T, threshold=0.65,
+    category="Composition", source=T, threshold=0.65, skip_for=("documentation",),
     explanation="Opening that sets up the answer instead of being the answer (\"Two constraints shape the design\").",
     examples=("Two constraints shape the design.", "Before diving in, let me set up what follows."),
     question={
@@ -583,27 +583,30 @@ HARGIS = "Hargis et al., Developing Quality Technical Information (IBM)"
 
 jev_rule(
     "JEV601", "not-task-oriented", "Documentation that describes the thing instead of telling the reader how to use it",
-    category="Documentation", source=HARGIS, threshold=0.7, applies_to=("documentation",),
+    category="Documentation", source=HARGIS, threshold=0.72, default=False, applies_to=("documentation",),
     explanation="Task orientation: docs should help the reader accomplish a task, not just catalog what a "
     "component is. Sources: Hargis et al., Developing Quality Technical Information; Google and Microsoft style guides.",
     examples=("The Config object is a container that holds settings for host, port, and timeout.",),
     question={
-        "question": "Does this documentation mainly describe what a component or feature IS, rather than telling the "
-        "reader how to accomplish a task with it?",
-        "not_for": "A reference entry or conceptual overview that is meant to describe or explain.",
+        "question": "In a section whose job is to instruct (a how-to, steps, or a task), does this merely describe "
+        "what a component is instead of how to accomplish the task with it?",
+        "not_for": "An introduction, tagline, overview, conceptual explanation, or a reference/description section "
+        "whose purpose is to describe rather than instruct.",
     },
 )
 
 jev_rule(
     "JEV602", "undefined-term", "An acronym or specialized term used without being defined on first use",
-    category="Documentation", source=f"{HARGIS}; Microsoft Writing Style Guide", threshold=0.7,
+    category="Documentation", source=f"{HARGIS}; Microsoft Writing Style Guide", threshold=0.8, default=False,
     applies_to=("documentation", "report", "academic_paper"),
     explanation="Clarity/completeness: expand an acronym or define a specialized term the first time it appears. "
     "Sources: Hargis et al., Developing Quality Technical Information; Microsoft Writing Style Guide.",
     examples=("Enable RBAC and apply the CRD before the DaemonSet rolls out.",),
     question={
-        "question": "Does this introduce an acronym, abbreviation, or specialized term without expanding or defining "
-        "it on first use, in a way that would leave a new reader guessing?",
+        "question": "Does this introduce an obscure acronym or specialized term with no expansion or definition, one "
+        "that a reader in the intended audience would likely not recognize?",
+        "not_for": "Widely-known tech terms and acronyms, product/tool/library names, the document's own defined "
+        "terms, or a term the surrounding text defines or links.",
     },
 )
 
