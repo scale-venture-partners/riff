@@ -35,3 +35,8 @@ max-reading-grade = 14
 # question = "Does this passage name a specific competing product or company?"
 # threshold = 0.6
 # scope = "block"
+
+# Document-type classification runs by default (one Jev call). Turn it off, or force a type,
+# from the CLI (--no-classify / --type email). A custom rule can gate on type with
+# applies_to / skip_for, e.g. skip_for = ["email", "letter"].
+# classify = true

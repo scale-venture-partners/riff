@@ -7,6 +7,11 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Document-type classification: riff detects the kind of writing (email, memo, SMS, essay,
+  blog post, report, and ~20 more) with one Jev pass, and rules can gate on it via
+  `applies_to` / `skip_for`. New `JEV112` flags a greeting or sign-off outside an email or
+  letter. Force the type with `--type`, or turn classification off with `--no-classify`;
+  custom rules can gate on type too.
 - Test-quality pass: broader unit coverage (extraction for every format, reporter,
   text metrics, rule-registry helpers, and offline `jev` helpers), a 90% coverage
   floor enforced in CI, and a mutmut mutation-testing setup with docs.

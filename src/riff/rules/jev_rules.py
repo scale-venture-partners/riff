@@ -255,6 +255,20 @@ jev_rule(
 )
 
 jev_rule(
+    "JEV112", "misplaced-greeting", "A personal greeting or sign-off where the format doesn't call for one",
+    category="Composition", source=T, threshold=0.7, scope="document", skip_for=("email", "letter"),
+    explanation="A greeting ('Hi Sam,') or sign-off ('Thanks, — Alex') is expected in an email or letter, "
+    "but out of place in a memo, report, essay, SMS, or documentation. This rule skips email and letter; "
+    "for any other type (or an unresolved one) it flags the greeting.",
+    examples=("Hi team, — opening a memo", "Thanks! — closing a report"),
+    question={
+        "question": "Does this open with a personal greeting addressed to someone, or close with a letter/email "
+        "style sign-off (a valediction like 'Thanks', 'Best', 'Regards' followed by a name)?",
+        "not_for": "A title, a subject line, or body text that merely mentions a name.",
+    },
+)
+
+jev_rule(
     "JEV110", "futurist-invitation", "\"Imagine a world where…\" salesmanship",
     category="Tone", source=T, threshold=0.72, default=False,
     explanation="The classic 'Imagine…' invitation followed by a list of wonders if the reader agrees.",

@@ -92,6 +92,8 @@ riff draft.md --no-jev           # static rules only, no API key needed
 riff draft.md --select JEV,RIF   # only these codes/prefixes
 riff draft.md --ignore JEV002    # keep defaults, drop one rule
 riff draft.md --debug-jev        # print every Jev probability, to tune thresholds
+riff email.txt --type email      # force the document type (skips classification)
+riff draft.md --no-classify      # don't classify; type-specific rules run everywhere
 riff draft.md --format json      # machine-readable output
 riff --list-rules                # the full catalog
 riff --explain JEV001            # one rule in detail
@@ -136,6 +138,27 @@ JEV001 = 0.7
 JEV103 = 0.75
 ```
 
+## Document types
+
+Before the rules run, riff classifies the whole document with one Jev question: is it an
+email, a memo, an SMS, an essay, a blog post, a report, and so on. The detected type prints
+above the findings (`type: email (0.88)`).
+
+Types let a rule apply to some kinds of writing and not others. A greeting and sign-off are
+normal in an **email** but a tell in a **memo** or **SMS**, so the built-in `JEV112` rule skips
+`email` and `letter` and flags a greeting anywhere else.
+
+- **Force the type** with `--type email` (or any type below). This skips classification, so it
+  needs no API key and is the escape hatch when the classifier is wrong or the input is a short
+  excerpt.
+- **Turn classification off** with `--no-classify`. Type-specific rules then run everywhere,
+  since the type is unresolved. An unresolved type never silently drops a rule.
+
+The type identifiers are: `sms`, `email`, `chat_message`, `memo`, `letter`, `essay`,
+`blog_post`, `article`, `report`, `academic_paper`, `book_chapter`, `documentation`,
+`release_notes`, `marketing_copy`, `social_post`, `product_description`, `review`,
+`press_release`, `resume`, `script`, `poem`, `notes`, `other`.
+
 ## Custom rules
 
 The built-in rules are deliberately generic. Anything specific to your team,
@@ -152,6 +175,8 @@ summary = "Names a competitor"
 question = "Does this passage name a specific competing product or company?"
 threshold = 0.6
 scope = "block"      # "block" (per paragraph) or "document" (once over the whole text)
+skip_for = ["email", "letter"]   # never run for these document types
+# applies_to = ["memo", "report"]  # or: run ONLY for these types
 
 # A phrase rule: literal strings flagged offline, no API key needed.
 [[custom_rules]]

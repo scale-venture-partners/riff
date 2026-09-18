@@ -113,3 +113,22 @@ def test_version(capsys):
     with _pytest.raises(SystemExit):
         main(["--version"])
     assert "riff" in capsys.readouterr().out
+def test_invalid_type_exit_2(capsys, sloppy):
+    assert main([str(sloppy), "--no-jev", "--type", "banana"]) == 2
+    err = capsys.readouterr().err
+    assert "not a known document type" in err
+    assert "email" in err  # lists valid options
+
+
+def test_forced_type_works_without_jev(capsys, sloppy):
+    rc = main([str(sloppy), "--no-jev", "--type", "memo"])
+    out = capsys.readouterr().out
+    assert rc in (0, 1)
+    assert "type: memo (forced)" in out
+
+
+def test_no_classify_keeps_type_unresolved(capsys, clean):
+    rc = main([str(clean), "--no-jev", "--no-classify"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "type:" not in out  # unresolved types aren't printed
