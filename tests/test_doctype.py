@@ -1,0 +1,157 @@
+"""Document-type gating: the pure rule_applies matrix, type validation, and result records."""
+
+from __future__ import annotations
+
+from dataclasses import replace
+
+from riff.doctype import DOC_TYPES, TYPE_NAMES, UNRESOLVED, forced, is_valid_type
+from riff.rules import load_rules
+from riff.rules.base import REGISTRY, rule_applies
+
+load_rules()
+
+
+def _rule(**kw):
+    base = REGISTRY["JEV001"]
+    return replace(base, **kw)
+
+
+def test_plain_rule_runs_for_any_type_and_unknown():
+    r = _rule(applies_to=(), skip_for=())
+    for t in ("email", "memo", "sms", None):
+        assert rule_applies(r, t) is True
+
+
+def test_skip_for_suppresses_only_listed_types():
+    r = _rule(skip_for=("email", "letter"))
+    assert rule_applies(r, "email") is False
+    assert rule_applies(r, "letter") is False
+    assert rule_applies(r, "memo") is True
+    assert rule_applies(r, "sms") is True
+
+
+def test_applies_to_restricts_to_listed_types():
+    r = _rule(applies_to=("email",))
+    assert rule_applies(r, "email") is True
+    assert rule_applies(r, "memo") is False
+
+
+def test_unknown_type_runs_everything_even_gated_rules():
+    # No silent drop: an unresolved type runs applies_to and skip_for rules alike.
+    assert rule_applies(_rule(applies_to=("email",)), None) is True
+    assert rule_applies(_rule(skip_for=("email",)), None) is True
+
+
+def test_skip_for_wins_over_applies_to():
+    r = _rule(applies_to=("email", "memo"), skip_for=("memo",))
+    assert rule_applies(r, "email") is True
+    assert rule_applies(r, "memo") is False
+
+
+def test_type_validation_and_names():
+    assert is_valid_type("email")
+    assert not is_valid_type("banana")
+    assert "email" in TYPE_NAMES and "memo" in TYPE_NAMES
+    assert set(TYPE_NAMES) == set(DOC_TYPES)
+
+
+def test_doc_type_result_sources():
+    assert UNRESOLVED.source == "unresolved" and UNRESOLVED.type is None
+    f = forced("memo")
+    assert f.type == "memo" and f.source == "forced" and f.confidence is None
+
+
+def test_greeting_rule_is_type_gated():
+    g = REGISTRY["JEV112"]
+    assert g.skip_for == ("email", "letter")
+    assert g.scope == "document"
+    assert rule_applies(g, "email") is False
+    assert rule_applies(g, "memo") is True
+
+
+def test_report_shows_and_serializes_doc_type():
+    import io
+    import json
+
+    from riff.doctype import DocTypeResult
+    from riff.engine import LintResult
+    from riff.extract import extract_markdown
+    from riff.report import render_json, render_text
+
+    doc = extract_markdown("Hi Sam, please ship it. Thanks, Alex.")
+    forced_res = LintResult(document=doc, findings=[], jev_stats={}, doc_type=forced("memo"))
+    buf = io.StringIO()
+    render_text([forced_res], stream=buf)
+    assert "type: memo (forced)" in buf.getvalue()
+
+    classified = LintResult(document=doc, findings=[], jev_stats={},
+                            doc_type=DocTypeResult(type="email", confidence=0.9, source="classified"))
+    jbuf = io.StringIO()
+    render_json([classified], stream=jbuf)
+    payload = json.loads(jbuf.getvalue())
+    assert payload[0]["doc_type"] == "email"
+    assert payload[0]["doc_type_source"] == "classified"
+
+
+def test_unresolved_type_not_printed():
+    import io
+
+    from riff.engine import LintResult
+    from riff.extract import extract_markdown
+    from riff.report import render_text
+
+    doc = extract_markdown("Plain body text here.")
+    buf = io.StringIO()
+    render_text([LintResult(document=doc, findings=[])], stream=buf)  # default UNRESOLVED
+    assert "type:" not in buf.getvalue()
+
+
+def test_form_specific_rules_registered_and_gated():
+    # The mined JEV6xx rules exist, cite a source, and are gated to their document type.
+    expected = {
+        "JEV601": ("documentation",),
+        "JEV610": ("report", "memo"),
+        "JEV620": ("article", "press_release"),
+        "JEV630": ("marketing_copy", "product_description"),
+        "JEV660": ("release_notes",),
+        "JEV670": ("resume",),
+    }
+    for code, types in expected.items():
+        r = REGISTRY[code]
+        assert r.applies_to == types
+        assert r.source  # a citation is present
+        assert rule_applies(r, types[0]) is True
+        assert rule_applies(r, "sms") is False        # not its type
+        assert rule_applies(r, None) is True          # unresolved runs everything
+
+
+def test_doc_rules_recalibrated_defaults():
+    # The documentation rules over-fired on real docs, so they are opt-in; preamble skips docs.
+    assert REGISTRY["JEV601"].default is False
+    assert REGISTRY["JEV602"].default is False
+    assert "documentation" in REGISTRY["JEV001"].skip_for
+
+
+def test_type_samples_extract_and_are_plausible():
+    # Guard the committed per-type sample docs: each must parse to prose.
+    from pathlib import Path
+
+    from riff.extract import extract
+
+    sample_dir = Path(__file__).resolve().parent.parent / "samples" / "types"
+    files = sorted(sample_dir.iterdir())
+    assert len(files) >= 20
+    for f in files:
+        doc = extract(f)
+        assert doc.word_count > 3, f
+
+
+def test_promotional_and_terse_gating():
+    # Promotional language is expected in ad copy; boilerplate/abstraction rules skip terse genres.
+    assert set(REGISTRY["JEV304"].skip_for) >= {"marketing_copy", "product_description", "social_post"}
+    assert rule_applies(REGISTRY["JEV304"], "marketing_copy") is False
+    assert rule_applies(REGISTRY["JEV304"], "essay") is True
+    for code in ("JEV207", "JEV502"):
+        assert "notes" in REGISTRY[code].skip_for
+        assert "script" in REGISTRY[code].skip_for
+        assert rule_applies(REGISTRY[code], "notes") is False

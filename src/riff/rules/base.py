@@ -56,10 +56,26 @@ class Rule:
     check: Checker | None = field(default=None, compare=False)
     # True for rules declared by a user in riff.toml, not shipped with riff.
     custom: bool = False
+    # Document-type gating. applies_to = only these types (empty = any); skip_for = never these types.
+    applies_to: tuple[str, ...] = ()
+    skip_for: tuple[str, ...] = ()
 
     @property
     def prefix(self) -> str:
         return re.match(r"[A-Z]+", self.code).group(0)
+
+
+def rule_applies(rule: Rule, doc_type: str | None) -> bool:
+    """Whether a rule runs for a given document type.
+
+    An unresolved type (None) runs every rule: not classifying must never silently drop rules.
+    A known type is suppressed only by an explicit skip_for, or by an applies_to it is absent from.
+    """
+    if doc_type is None:
+        return True
+    if doc_type in rule.skip_for:
+        return False
+    return not rule.applies_to or doc_type in rule.applies_to
 
 
 REGISTRY: dict[str, Rule] = {}
@@ -95,13 +111,15 @@ def register_custom_rules(specs: list[Mapping[str, Any]]) -> list[str]:
         name = str(spec.get("name", code))
         summary = str(spec.get("summary", name))
         severity = str(spec.get("severity", "warning"))
+        applies_to = tuple(str(t) for t in (spec.get("applies_to") or spec.get("applies-to") or ()))
+        skip_for = tuple(str(t) for t in (spec.get("skip_for") or spec.get("skip-for") or ()))
         if kind == "phrase":
             phrases = spec.get("phrases") or []
             if not phrases:
                 raise ValueError(f"custom phrase rule {code} needs a non-empty 'phrases' list")
             rule = Rule(
                 code=code, name=name, summary=summary, category="Custom", source="custom (riff.toml)",
-                kind="static", severity=severity, custom=True,
+                kind="static", severity=severity, custom=True, applies_to=applies_to, skip_for=skip_for,
                 check=phrase_check(code, phrase_pattern([str(p) for p in phrases]), summary + " ('{match}')"),
             )
         elif kind == "jev":
@@ -111,7 +129,7 @@ def register_custom_rules(specs: list[Mapping[str, Any]]) -> list[str]:
             scope = str(spec.get("scope", "block"))
             rule = Rule(
                 code=code, name=name, summary=summary, category="Custom", source="custom (riff.toml)",
-                kind="jev", scope=scope, severity=severity, custom=True,
+                kind="jev", scope=scope, severity=severity, custom=True, applies_to=applies_to, skip_for=skip_for,
                 question={"question": str(question)} if isinstance(question, str) else question,
                 threshold=float(spec.get("threshold", 0.6)),
             )
@@ -136,6 +154,8 @@ def jev_rule(
     default: bool = True,
     severity: Severity = "warning",
     threshold: float = 0.6,
+    applies_to: tuple[str, ...] = (),
+    skip_for: tuple[str, ...] = (),
 ) -> Rule:
     return register(
         Rule(
@@ -152,6 +172,8 @@ def jev_rule(
             severity=severity,
             question=question,
             threshold=threshold,
+            applies_to=applies_to,
+            skip_for=skip_for,
         )
     )
 

@@ -1,0 +1,1 @@
+We just crossed 10,000 teams on Harbor. When we started, we thought we were building a deploy tool. Turns out we were building a way for small teams to ship like big ones, without the on-call dread. Thank you to everyone who trusted us early. The next year is going to be fun.

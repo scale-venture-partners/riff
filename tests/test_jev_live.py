@@ -65,3 +65,22 @@ async def test_formulaic_close_detected_live():
     settings = Settings(select=("JEV111",))
     findings, _ = await run_jev(doc, ["JEV111"], settings)
     assert "JEV111" in {f.code for f in findings}
+
+
+async def test_classifies_email_live():
+    from riff.doctype import classify_document
+
+    text = ("Hi Jordan, nice to meet you. I lead AI investing at the firm and wanted to reach out. "
+            "Would you be up for a coffee sometime next week? Thanks, Alex")
+    result = await classify_document(text, len(text.split()))
+    assert result.source == "classified"
+    assert result.type in {"email", "letter"}
+
+
+async def test_form_specific_rule_fires_for_its_type_live():
+    from riff.settings import Settings
+
+    doc = extract_markdown("## v2.3.0\n\nVarious improvements and bug fixes. Minor changes throughout.")
+    settings = Settings(select=("JEV660",), forced_type="release_notes")
+    findings, _ = await run_jev(doc, ["JEV660"], settings)
+    assert "JEV660" in {f.code for f in findings}

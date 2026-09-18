@@ -26,7 +26,7 @@ E = "Strunk & White, The Elements of Style"
 
 jev_rule(
     "JEV001", "preamble", "Announces what it is about to say instead of saying it",
-    category="Composition", source=T, threshold=0.65,
+    category="Composition", source=T, threshold=0.65, skip_for=("documentation",),
     explanation="Opening that sets up the answer instead of being the answer (\"Two constraints shape the design\").",
     examples=("Two constraints shape the design.", "Before diving in, let me set up what follows."),
     question={
@@ -255,6 +255,20 @@ jev_rule(
 )
 
 jev_rule(
+    "JEV112", "misplaced-greeting", "A personal greeting or sign-off where the format doesn't call for one",
+    category="Composition", source=T, threshold=0.7, scope="document", skip_for=("email", "letter"),
+    explanation="A greeting ('Hi Sam,') or sign-off ('Thanks, — Alex') is expected in an email or letter, "
+    "but out of place in a memo, report, essay, SMS, or documentation. This rule skips email and letter; "
+    "for any other type (or an unresolved one) it flags the greeting.",
+    examples=("Hi team, — opening a memo", "Thanks! — closing a report"),
+    question={
+        "question": "Does this open with a personal greeting addressed to someone, or close with a letter/email "
+        "style sign-off (a valediction like 'Thanks', 'Best', 'Regards' followed by a name)?",
+        "not_for": "A title, a subject line, or body text that merely mentions a name.",
+    },
+)
+
+jev_rule(
     "JEV110", "futurist-invitation", "\"Imagine a world where…\" salesmanship",
     category="Tone", source=T, threshold=0.72, default=False,
     explanation="The classic 'Imagine…' invitation followed by a list of wonders if the reader agrees.",
@@ -321,14 +335,16 @@ jev_rule(
 
 jev_rule(
     "JEV207", "generic-boilerplate", "Interchangeable boilerplate that could describe almost anyone",
-    category="Substance", source=T, threshold=0.7,
+    category="Substance", source=T, threshold=0.75,
+    skip_for=("notes", "sms", "chat_message", "script"),
     explanation="Language so generic it would fit any organization, product, or person in the category, carrying no "
     "distinguishing specifics.",
     examples=("We partner with our customers to drive outcomes and deliver value at every stage of the journey.",),
     question={
         "question": "Is this passage interchangeable boilerplate — phrasing so generic it could describe almost any "
         "organization, product, or person of its kind, without any distinguishing specifics?",
-        "not_for": "A concrete, specific description tied to this particular subject.",
+        "not_for": "A conventional greeting, sign-off, or closing; a short functional or transactional line "
+        "(an instruction, a cross-reference, a spec); or a concrete, specific description.",
     },
 )
 
@@ -397,6 +413,7 @@ jev_rule(
 jev_rule(
     "JEV304", "promotional-language", "Reads like marketing copy rather than description",
     category="Tone", source=T, threshold=0.68,
+    skip_for=("marketing_copy", "product_description", "social_post", "press_release"),
     explanation="Selling the subject instead of describing it: 'all-in-one', 'unprecedented', 'seamless experience'.",
     examples=("an all-in-one solution that unlocks unprecedented productivity",),
     question={
@@ -512,7 +529,8 @@ jev_rule(
 
 jev_rule(
     "JEV502", "vague-abstraction", "Abstract, general language where concrete detail would serve",
-    category="Substance", source=E, threshold=0.7,
+    category="Substance", source=E, threshold=0.72,
+    skip_for=("notes", "sms", "chat_message", "script"),
     explanation="Elements of Style, rule 16: use definite, specific, concrete language. Prefer the particular fact "
     "to the vague generality; 'a period of unfavorable weather' → 'it rained every day for a week'.",
     examples=("The situation developed in an unsatisfactory manner.",
@@ -520,7 +538,8 @@ jev_rule(
     question={
         "question": "Is this passage written in vague, abstract, or general terms where concrete, specific, definite "
         "language would carry more meaning?",
-        "not_for": "A passage that is already specific, or a necessary high-level summary backed by concrete detail nearby.",
+        "not_for": "A deliberately terse note, list item, heading, or fragment; a greeting, closing, or short "
+        "functional line; a passage that is already specific or a lead-in whose specifics follow immediately.",
     },
 )
 
@@ -558,5 +577,133 @@ jev_rule(
     question={
         "question": "Does this passage list coordinate ideas — in a series, or a 'both/and', 'not only/but also', "
         "'either/or' pair — in mismatched grammatical forms that should be parallel?",
+    },
+)
+
+# ---------------------------------------------------------------- form-specific rules (JEV6xx)
+# Mined from seminal style texts for particular document types; each is gated with applies_to so it
+# runs only on the kind of writing it is about. Sources are cited per rule; more than one is fine.
+
+HARGIS = "Hargis et al., Developing Quality Technical Information (IBM)"
+
+jev_rule(
+    "JEV601", "not-task-oriented", "Documentation that describes the thing instead of telling the reader how to use it",
+    category="Documentation", source=HARGIS, threshold=0.72, default=False, applies_to=("documentation",),
+    explanation="Task orientation: docs should help the reader accomplish a task, not just catalog what a "
+    "component is. Sources: Hargis et al., Developing Quality Technical Information; Google and Microsoft style guides.",
+    examples=("The Config object is a container that holds settings for host, port, and timeout.",),
+    question={
+        "question": "In a section whose job is to instruct (a how-to, steps, or a task), does this merely describe "
+        "what a component is instead of how to accomplish the task with it?",
+        "not_for": "An introduction, tagline, overview, conceptual explanation, or a reference/description section "
+        "whose purpose is to describe rather than instruct.",
+    },
+)
+
+jev_rule(
+    "JEV602", "undefined-term", "An acronym or specialized term used without being defined on first use",
+    category="Documentation", source=f"{HARGIS}; Microsoft Writing Style Guide", threshold=0.8, default=False,
+    applies_to=("documentation", "report", "academic_paper"),
+    explanation="Clarity/completeness: expand an acronym or define a specialized term the first time it appears. "
+    "Sources: Hargis et al., Developing Quality Technical Information; Microsoft Writing Style Guide.",
+    examples=("Enable RBAC and apply the CRD before the DaemonSet rolls out.",),
+    question={
+        "question": "Does this introduce an obscure acronym or specialized term with no expansion or definition, one "
+        "that a reader in the intended audience would likely not recognize?",
+        "not_for": "Widely-known tech terms and acronyms, product/tool/library names, the document's own defined "
+        "terms, or a term the surrounding text defines or links.",
+    },
+)
+
+jev_rule(
+    "JEV610", "buried-conclusion", "Makes the reader work through context before stating the conclusion",
+    category="Composition", source="Minto, The Pyramid Principle; Garner, HBR Guide to Better Business Writing",
+    threshold=0.7, scope="document", applies_to=("report", "memo"),
+    explanation="Answer-first / bottom-line-up-front: a report or memo should lead with its recommendation or "
+    "conclusion, then support it. Sources: Minto, The Pyramid Principle; Garner, HBR Guide to Better Business Writing.",
+    examples=("Weeks of survey, log review, and debate … and only at the end: 'we should adopt structured logging.'",),
+    question={
+        "question": "Does this piece make the reader work through background, evidence, or process before it states "
+        "its main conclusion or recommendation, instead of leading with the answer?",
+        "not_for": "A piece whose main point is already stated at or near the start.",
+    },
+)
+
+jev_rule(
+    "JEV620", "editorializing", "Opinion or loaded language inserted into what is presented as reporting",
+    category="Substance", source="AP Stylebook; Kovach & Rosenstiel, The Elements of Journalism",
+    threshold=0.7, applies_to=("article", "press_release"),
+    explanation="News and press writing report; they don't judge. Loaded adjectives and the writer's opinion do not "
+    "belong in factual reporting. Sources: AP Stylebook; Kovach & Rosenstiel, The Elements of Journalism.",
+    examples=("The company's disastrous and frankly embarrassing rollout proves management still doesn't get it.",),
+    question={
+        "question": "Does this insert the writer's opinion, or loaded and judgmental adjectives, into what is "
+        "presented as factual reporting?",
+        "not_for": "A clearly labelled opinion piece, editorial, or a directly attributed quotation.",
+    },
+)
+
+jev_rule(
+    "JEV630", "feature-not-benefit", "Lists features without translating them into a benefit to the reader",
+    category="Substance", source="Ogilvy, Ogilvy on Advertising; Bly, The Copywriter's Handbook",
+    threshold=0.7, applies_to=("marketing_copy", "product_description"),
+    explanation="Sell the benefit, not the spec: copy should say what a feature does for the reader. Sources: "
+    "Ogilvy, Ogilvy on Advertising; Bly, The Copywriter's Handbook.",
+    examples=("The X200 has a 3nm chip, 16GB RAM, a 6.1-inch OLED panel, and an IP68 rating.",),
+    question={
+        "question": "Does this list product features or specifications without translating them into a concrete "
+        "benefit or outcome for the reader or customer?",
+        "not_for": "A spec sheet or table whose explicit purpose is to list specifications.",
+    },
+)
+
+jev_rule(
+    "JEV640", "on-the-nose-dialogue", "Dialogue that states feelings or plot directly instead of implying them",
+    category="Substance", source="McKee, Story; Field, Screenplay", threshold=0.72, applies_to=("script",),
+    explanation="On-the-nose dialogue says outright what should be implied by subtext or action. Sources: "
+    "McKee, Story; Field, Screenplay.",
+    examples=("\"I am so angry at you right now because you forgot my birthday,\" she said.",),
+    question={
+        "question": "Does the dialogue here state characters' feelings, motives, or the plot directly and literally, "
+        "where subtext or implication would be stronger?",
+    },
+)
+
+jev_rule(
+    "JEV650", "forced-rhyme", "Rhyme that distorts word choice or syntax to hit the rhyme",
+    category="Word Choice", source="Oliver, A Poetry Handbook; Fry, The Ode Less Travelled",
+    threshold=0.72, applies_to=("poem",),
+    explanation="A rhyme that bends meaning or word order just to land the sound. Sources: Oliver, A Poetry "
+    "Handbook; Fry, The Ode Less Travelled.",
+    examples=("Inverted syntax or an odd word chosen only because it rhymes with the line before.",),
+    question={
+        "question": "Does this verse distort its word choice or syntax — an unnatural word or inverted phrasing — "
+        "mainly to make a rhyme land?",
+    },
+)
+
+jev_rule(
+    "JEV660", "vague-changelog-entry", "A release note that says nothing specific ('various improvements')",
+    category="Substance", source="Keep a Changelog (keepachangelog.com)",
+    threshold=0.7, applies_to=("release_notes",),
+    explanation="A changelog entry should say what changed. 'Various improvements and bug fixes' tells the reader "
+    "nothing. Source: Keep a Changelog (keepachangelog.com).",
+    examples=("- Various improvements and bug fixes", "- Minor changes"),
+    question={
+        "question": "Is this release-note or changelog entry vague ('various improvements', 'bug fixes', 'minor "
+        "changes') instead of stating what specifically changed?",
+    },
+)
+
+jev_rule(
+    "JEV670", "weak-resume-bullet", "A resume entry with no strong action verb or concrete result",
+    category="Substance", source="Resume conventions (strong action verbs, quantified results)",
+    threshold=0.7, applies_to=("resume",),
+    explanation="Resume bullets should lead with a strong action verb and state a concrete, ideally quantified "
+    "result, not 'Responsible for' or 'Helped with'. Source: widely-held resume conventions.",
+    examples=("Responsible for helping with various marketing tasks and assisting the team as needed.",),
+    question={
+        "question": "Does this resume entry lead with a weak phrase like 'Responsible for' or 'Helped with', or "
+        "otherwise lack a strong action verb and a concrete or quantified result?",
     },
 )

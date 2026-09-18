@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from riff import __version__
+from riff.doctype import TYPE_NAMES, is_valid_type
 from riff.engine import lint_path
 from riff.extract import SUPPORTED
 from riff.jev import JevUnavailable
@@ -38,6 +39,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--ignore", type=_split_list, help="disable these rule codes/prefixes")
     p.add_argument("--extend-select", type=_split_list, help="enable these on top of the defaults/select")
     p.add_argument("--no-jev", action="store_true", help="skip semantic (Jev) rules; static rules only")
+    p.add_argument("--type", dest="doc_type", metavar="TYPE",
+                   help="force the document type (e.g. email, memo, sms); skips classification, works with --no-jev")
+    p.add_argument("--no-classify", action="store_true",
+                   help="do not classify the document type (type-specific rules then run everywhere)")
     p.add_argument("--model", help="Jev model id (default from config, else jev-latest)")
     p.add_argument("--max-sentence-words", type=int, help="word limit for CLR001 (default 45)")
     p.add_argument("--format", choices=("text", "json"), default="text", help="output format")
@@ -65,6 +70,10 @@ def _apply_overrides(settings: Settings, args: argparse.Namespace) -> Settings:
         settings.model = args.model
     if args.max_sentence_words is not None:
         settings.max_sentence_words = args.max_sentence_words
+    if args.no_classify:
+        settings.classify = False
+    if args.doc_type:
+        settings.forced_type = args.doc_type
     return settings
 
 
@@ -122,6 +131,10 @@ def main(argv: list[str] | None = None) -> int:
         import os
 
         os.environ["NO_COLOR"] = "1"
+
+    if args.doc_type and not is_valid_type(args.doc_type):
+        print(f"--type {args.doc_type!r} is not a known document type. Valid: {', '.join(TYPE_NAMES)}", file=sys.stderr)
+        return 2
 
     paths = list(args.paths) + list(args.file)
     if not paths:

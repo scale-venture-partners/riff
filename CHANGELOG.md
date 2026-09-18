@@ -7,6 +7,22 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Tuned rules from a full per-type dogfood: `JEV304` (promotional) skips ad-copy types where
+  selling is the point; `JEV207` (boilerplate) and `JEV502` (abstraction) skip terse genres
+  (notes, SMS, chat, script) and no longer flag conventional sign-offs or functional lines.
+  Cleared the false positives this surfaced on riff's own README (35 to 1).
+- Calibrated the documentation rules against riff's own README (dogfooding): `JEV601` and
+  `JEV602` are now opt-in (they over-fired on real docs), `JEV001` skips `documentation`, and
+  `samples/types/` now holds a neutral public example of every supported document type.
+- Type-specific rules mined from seminal style texts (JEV601-JEV670): task orientation and
+  undefined terms (docs), buried conclusion (report/memo), editorializing (news), feature-not-
+  benefit (marketing), on-the-nose dialogue (script), forced rhyme (poem), vague changelog entry
+  (release notes), and weak resume bullets. Each cites its source(s); the README maps sources by type.
+- Document-type classification: riff detects the kind of writing (email, memo, SMS, essay,
+  blog post, report, and ~20 more) with one Jev pass, and rules can gate on it via
+  `applies_to` / `skip_for`. New `JEV112` flags a greeting or sign-off outside an email or
+  letter. Force the type with `--type`, or turn classification off with `--no-classify`;
+  custom rules can gate on type too.
 - Test-quality pass: broader unit coverage (extraction for every format, reporter,
   text metrics, rule-registry helpers, and offline `jev` helpers), a 90% coverage
   floor enforced in CI, and a mutmut mutation-testing setup with docs.

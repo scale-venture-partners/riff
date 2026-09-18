@@ -71,6 +71,8 @@ riff draft.md --no-jev           # static rules only, no API key needed
 riff draft.md --select JEV,RIF   # only these codes/prefixes
 riff draft.md --ignore JEV002    # keep defaults, drop one rule
 riff draft.md --debug-jev        # print every Jev probability, to tune thresholds
+riff email.txt --type email      # force the document type (skips classification)
+riff draft.md --no-classify      # don't classify; type-specific rules run everywhere
 riff draft.md --format json      # machine-readable output
 riff --list-rules                # the full catalog
 riff --explain JEV001            # one rule in detail
@@ -89,10 +91,10 @@ one at <https://console.typesafe.ai/>). Without it, `--no-jev` runs the static r
 you select a Jev rule with no key, riff stops and tells you the two ways to fix it rather than
 degrading silently.
 
-Each Jev rule is one yes/no (Noul) question asked about a single paragraph, phrased so a high
-probability means the tell is present. riff prints that probability (`p=0.93`) on every Jev
-finding, and you can set a per-rule `threshold` to tune sensitivity against your own writing.
-The document text is sent to the API as data; treat any content you lint accordingly.
+Each Jev rule is one yes/no (Noul) question asked about a single paragraph. It is phrased so a
+high probability means the tell is present. riff prints that probability (`p=0.93`) on every Jev
+finding, and you set a per-rule `threshold` to tune sensitivity. The document text is sent to the
+API as data; treat any content you lint accordingly.
 
 ## Configuration
 
@@ -115,6 +117,27 @@ JEV001 = 0.7
 JEV103 = 0.75
 ```
 
+## Document types
+
+Before the rules run, riff classifies the whole document with one Jev question: is it an
+email, a memo, an SMS, an essay, a blog post, a report, and so on. The detected type prints
+above the findings (`type: email (0.88)`).
+
+Types let a rule apply to some kinds of writing and not others. A greeting and sign-off are
+normal in an **email** but a tell in a **memo** or **SMS**, so the built-in `JEV112` rule skips
+`email` and `letter` and flags a greeting anywhere else.
+
+- Force the type with `--type email` (or any type below). This skips classification, so it
+  needs no API key and is the escape hatch when the classifier is wrong or the input is a short
+  excerpt.
+- Turn classification off with `--no-classify`. Type-specific rules then run everywhere,
+  since the type is unresolved. An unresolved type never silently drops a rule.
+
+The type identifiers are: `sms`, `email`, `chat_message`, `memo`, `letter`, `essay`,
+`blog_post`, `article`, `report`, `academic_paper`, `book_chapter`, `documentation`,
+`release_notes`, `marketing_copy`, `social_post`, `product_description`, `review`,
+`press_release`, `resume`, `script`, `poem`, `notes`, `other`.
+
 ## Custom rules
 
 The built-in rules are deliberately generic. Anything specific to your team,
@@ -131,6 +154,8 @@ summary = "Names a competitor"
 question = "Does this passage name a specific competing product or company?"
 threshold = 0.6
 scope = "block"      # "block" (per paragraph) or "document" (once over the whole text)
+skip_for = ["email", "letter"]   # never run for these document types
+# applies_to = ["memo", "report"]  # or: run ONLY for these types
 
 # A phrase rule: literal strings flagged offline, no API key needed.
 [[custom_rules]]
@@ -147,7 +172,7 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 
 ## Rules
 
-52 rules (46 semantic, 6 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
+62 rules (56 semantic, 6 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
 
 ### CLR — Clarity metrics (arithmetic Jev can't do)
 
@@ -181,6 +206,7 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV108` | false-suspense |   | Jev | A "here's the kicker" transition promising a revelation | tropes.fyi |
 | `JEV109` | pedagogical-voice |   | Jev | A hand-holding, teacher-to-student voice | tropes.fyi |
 | `JEV111` | formulaic-close |   | Jev | A canned, low-pressure sign-off | tropes.fyi |
+| `JEV112` | misplaced-greeting |   | Jev | A personal greeting or sign-off where the format doesn't call for one | tropes.fyi |
 | `JEV110` | futurist-invitation | · | Jev | "Imagine a world where…" salesmanship | tropes.fyi |
 | `JEV201` | one-point-dilution | · | Jev | Restates one idea several ways without adding anything | tropes.fyi |
 | `JEV202` | superficial-analysis |   | Jev | Attaches hollow significance to a mundane fact | tropes.fyi |
@@ -207,6 +233,15 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV503` | weak-intensifier |   | Jev | Leans on 'very', 'rather', 'pretty', 'quite' for emphasis | Strunk & White, The Elements of Style |
 | `JEV504` | loose-sentence-chain | · | Jev | Two or more clauses strung together with and / but / so / which | Strunk & White, The Elements of Style |
 | `JEV505` | faulty-parallelism | · | Jev | Coordinate ideas in a series expressed in mismatched forms | Strunk & White, The Elements of Style |
+| `JEV601` | not-task-oriented | · | Jev | Documentation that describes the thing instead of telling the reader how to use it | Hargis et al., Developing Quality Technical Information (IBM) |
+| `JEV602` | undefined-term | · | Jev | An acronym or specialized term used without being defined on first use | Hargis et al., Developing Quality Technical Information (IBM); Microsoft Writing Style Guide |
+| `JEV610` | buried-conclusion |   | Jev | Makes the reader work through context before stating the conclusion | Minto, The Pyramid Principle; Garner, HBR Guide to Better Business Writing |
+| `JEV620` | editorializing |   | Jev | Opinion or loaded language inserted into what is presented as reporting | AP Stylebook; Kovach & Rosenstiel, The Elements of Journalism |
+| `JEV630` | feature-not-benefit |   | Jev | Lists features without translating them into a benefit to the reader | Ogilvy, Ogilvy on Advertising; Bly, The Copywriter's Handbook |
+| `JEV640` | on-the-nose-dialogue |   | Jev | Dialogue that states feelings or plot directly instead of implying them | McKee, Story; Field, Screenplay |
+| `JEV650` | forced-rhyme |   | Jev | Rhyme that distorts word choice or syntax to hit the rhyme | Oliver, A Poetry Handbook; Fry, The Ode Less Travelled |
+| `JEV660` | vague-changelog-entry |   | Jev | A release note that says nothing specific ('various improvements') | Keep a Changelog (keepachangelog.com) |
+| `JEV670` | weak-resume-bullet |   | Jev | A resume entry with no strong action verb or concrete result | Resume conventions (strong action verbs, quantified results) |
 
 ### RIF — Typography and structure (exact checks Jev can't see)
 
@@ -218,19 +253,42 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 
 ## Sources
 
-The rule set draws on two catalogs of writing problems:
+The rule set comes from tropes.fyi, Williams, and Strunk & White:
 
-- **AI writing tells** from [tropes.fyi](https://tropes.fyi/tropes-md): negative parallelism,
+- AI writing tells, from [tropes.fyi](https://tropes.fyi/tropes-md): negative parallelism,
   em-dash addiction, magic adverbs, signposted conclusions, and the rest.
-- **Clarity and grace** from Joseph M. Williams, *Style: Lessons in Clarity and Grace*: wordy
+- Clarity and grace, from Joseph M. Williams, *Style: Lessons in Clarity and Grace*: wordy
   phrases, nominalizations, passive voice, sentence length, and readability.
-- **The Elements of Style** by Strunk & White: put statements in positive form, use concrete
+- The Elements of Style, by Strunk & White: put statements in positive form, use concrete
   language, cut weak intensifiers, avoid loose-sentence chains, and keep parallel form.
 
 Almost every tell is a Jev judgment: pattern-matching misses paraphrases and fires on look-alikes,
 so anything that depends on meaning or context is a model question, not a regex. Only what Jev
 genuinely cannot do stays in code — exact glyphs it never sees (curly quotes, arrows), structural
 facts in markup, cross-document duplicate detection, and arithmetic metrics (sentence length, grade).
+
+### Sources by document type
+
+The type-specific rules are mined from a style text per document type — Minto for reports, Ogilvy
+for marketing, Hargis for docs, and so on. Where a form has no single canonical work, we cite the recognized guide or
+convention. A rule may cite more than one source, and these overlap with the general catalog above.
+
+| Type | Source(s) mined |
+|---|---|
+| essay, book_chapter | Zinsser, *On Writing Well*; King, *On Writing* |
+| article, press_release | *AP Stylebook*; Kovach & Rosenstiel, *The Elements of Journalism* |
+| report, memo | Minto, *The Pyramid Principle*; Garner, *HBR Guide to Better Business Writing* |
+| academic_paper | Sword, *Stylish Academic Writing*; Williams, *Style* |
+| documentation | Hargis et al., *Developing Quality Technical Information* (IBM); Microsoft / Google style guides |
+| marketing_copy, product_description | Ogilvy, *Ogilvy on Advertising*; Bly, *The Copywriter's Handbook* |
+| script | McKee, *Story*; Field, *Screenplay* |
+| poem | Oliver, *A Poetry Handbook*; Fry, *The Ode Less Travelled* |
+| release_notes | *Keep a Changelog*; *Semantic Versioning* |
+| email, letter | Shipley & Schwalbe, *Send*; Garner, *HBR Guide* |
+| blog_post, social_post | Handley, *Everybody Writes* |
+| review | Barnet, *A Short Guide to Writing About …* |
+| sms, chat_message | Crystal, *Txtng: The Gr8 Db8*; McCulloch, *Because Internet* (descriptive, not prescriptive) |
+| resume | conventions: strong action verbs, quantified results, no first person |
 
 ## Development
 

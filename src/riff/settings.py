@@ -28,6 +28,8 @@ class Settings:
     max_reading_grade: float = 14.0
     thresholds: dict[str, float] = field(default_factory=dict)
     jev_concurrency: int = 8
+    classify: bool = True
+    forced_type: str | None = None
     source: str = "defaults"
 
     def threshold_for(self, code: str) -> float:
@@ -111,5 +113,7 @@ def load_settings(explicit: Path | None = None, start: Path | None = None) -> Se
         max_reading_grade=float(table.get("max-reading-grade", table.get("max_reading_grade", 14.0))),
         thresholds=thresholds,
         jev_concurrency=int(table.get("jev-concurrency", table.get("jev_concurrency", 8))),
+        classify=bool(table.get("classify", True)),
+        forced_type=(str(table["type"]) if table.get("type") else None),
         source=str(path),
     )

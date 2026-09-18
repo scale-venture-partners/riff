@@ -109,3 +109,9 @@ def test_missing_code_raises():
 def test_jev_custom_rule_needs_question():
     with pytest.raises(ValueError, match="needs a 'question'"):
         register_custom_rules([{"code": "TST304", "type": "jev"}])
+def test_custom_rule_type_gating_fields():
+    register_custom_rules([{"code": "TST400", "type": "jev", "question": "Q?",
+                            "applies_to": ["memo", "report"], "skip_for": ["email"]}])
+    r = REGISTRY["TST400"]
+    assert r.applies_to == ("memo", "report")
+    assert r.skip_for == ("email",)

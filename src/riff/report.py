@@ -22,11 +22,24 @@ def _fmt_location(f: Finding) -> str:
     return f"{f.label}" if f.label else f"{f.line}:{f.col}"
 
 
+def _doc_type_line(result: LintResult, color: bool) -> str:
+    dt = result.doc_type
+    if dt.source == "forced":
+        body = f"type: {dt.type} (forced)"
+    elif dt.source == "classified" and dt.type:
+        body = f"type: {dt.type} ({dt.confidence:.2f})"
+    else:
+        body = "type: unresolved (type-specific rules run everywhere)"
+    return f"{_DIM if color else ''}{result.document.path}: {body}{_RESET if color else ''}"
+
+
 def render_text(results: list[LintResult], stream=None, summary: bool = True) -> None:
     stream = stream or sys.stdout
     color = _use_color(stream)
     total = 0
     for result in results:
+        if result.doc_type.source != "unresolved":
+            print(_doc_type_line(result, color), file=stream)
         findings = result.sorted()
         total += len(findings)
         for f in findings:
@@ -93,6 +106,9 @@ def render_json(results: list[LintResult], stream=None) -> None:
         {
             "path": r.document.path,
             "format": r.document.format,
+            "doc_type": r.doc_type.type,
+            "doc_type_confidence": r.doc_type.confidence,
+            "doc_type_source": r.doc_type.source,
             "findings": [
                 {
                     "code": f.code,
