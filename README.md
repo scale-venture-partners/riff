@@ -1,7 +1,7 @@
 # riff
 
 [![CI](https://github.com/scale-venture-partners/riff/actions/workflows/ci.yml/badge.svg)](https://github.com/scale-venture-partners/riff/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-00C756.svg)](LICENSE)
 
 A small, fast prose linter. It reads a document, flags the writing tells and clarity
 problems it finds, and reports them with **ruff-style rule codes** you can select, ignore,
@@ -304,3 +304,14 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how rules work and how to add one.
 ## License
 
 [MIT](LICENSE) © Scale Venture Partners.
+
+## About Scale Venture Partners
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/scale-logo-dark.png">
+  <img alt="Scale Venture Partners" src="assets/scale-logo-light.png" width="160">
+</picture>
+
+**We back the few who can go the distance.** Scale Venture Partners partners
+with early-stage AI companies on the journey from founder-led growth to a
+go-to-market machine. [scalevp.com](https://www.scalevp.com)
