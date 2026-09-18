@@ -60,3 +60,52 @@ def test_custom_rules_load_from_toml(tmp_path):
     settings = load_settings(start=tmp_path)
     assert "TST200" in REGISTRY
     assert "TST200" in settings.active_codes()
+
+
+def test_jev_custom_rule_all_fields_from_spec():
+    register_custom_rules([{"code": "TST300", "name": "n", "type": "jev", "summary": "sum here",
+                            "question": "Does it?", "threshold": 0.42, "scope": "document",
+                            "severity": "error"}])
+    r = REGISTRY["TST300"]
+    assert r.kind == "jev"
+    assert r.name == "n"
+    assert r.summary == "sum here"
+    assert r.threshold == 0.42
+    assert r.scope == "document"
+    assert r.severity == "error"
+    assert r.category == "Custom"
+    assert r.source == "custom (riff.toml)"
+    assert r.question == {"question": "Does it?"}
+    assert r.custom is True
+
+
+def test_jev_custom_rule_preserves_dict_question():
+    register_custom_rules([{"code": "TST301", "type": "jev",
+                            "question": {"question": "Q?", "not_for": "X"}}])
+    assert REGISTRY["TST301"].question == {"question": "Q?", "not_for": "X"}
+
+
+def test_jev_custom_rule_defaults():
+    register_custom_rules([{"code": "TST302", "type": "jev", "question": "Q?"}])
+    r = REGISTRY["TST302"]
+    assert r.threshold == 0.6      # default threshold
+    assert r.scope == "block"      # default scope
+    assert r.severity == "warning"
+
+
+def test_phrase_custom_rule_message_uses_summary():
+    register_custom_rules([{"code": "TST303", "type": "phrase", "summary": "avoid this",
+                            "phrases": ["circle back"]}])
+    doc = extract_markdown("Let's circle back later.")
+    findings = lint_document(doc, Settings(jev=False, select=("TST303",))).findings
+    assert findings and "avoid this" in findings[0].message
+
+
+def test_missing_code_raises():
+    with pytest.raises(ValueError, match="missing a 'code'"):
+        register_custom_rules([{"type": "jev", "question": "Q?"}])
+
+
+def test_jev_custom_rule_needs_question():
+    with pytest.raises(ValueError, match="needs a 'question'"):
+        register_custom_rules([{"code": "TST304", "type": "jev"}])

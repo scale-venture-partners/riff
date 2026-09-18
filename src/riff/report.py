@@ -46,9 +46,16 @@ def render_text(results: list[LintResult], stream=None, summary: bool = True) ->
 
 def _summary(results: list[LintResult], total: int, stream, color: bool) -> None:
     files = len(results)
+    errors = sum(r.jev_stats.get("errors", 0) for r in results if r.jev_stats)
     if total == 0:
-        msg = f"All checks passed on {files} file{'s' * (files != 1)}."
-        print(f"\n{_COLOR['info'] if color else ''}{msg}{_RESET if color else ''}", file=stream)
+        # Don't claim success when the lint was incomplete: an all-errored Jev run has zero findings.
+        if errors:
+            warn = f"No findings, but {errors} Jev request(s) failed, so this lint is incomplete."
+            print(f"\n{_COLOR['error'] if color else ''}{warn}{_RESET if color else ''}", file=stream)
+        else:
+            msg = f"All checks passed on {files} file{'s' * (files != 1)}."
+            print(f"\n{_COLOR['info'] if color else ''}{msg}{_RESET if color else ''}", file=stream)
+        _jev_note(results, stream, color)
         return
     by_code: dict[str, int] = {}
     for r in results:
@@ -60,19 +67,24 @@ def _summary(results: list[LintResult], total: int, stream, color: bool) -> None
     plural_f = "s" * (total != 1)
     plural_files = "s" * (files != 1)
     print(f"\n{bold}{total} finding{plural_f} in {files} file{plural_files}{reset} ({top}).", file=stream)
+    _jev_note(results, stream, color)
+
+
+def _jev_note(results: list[LintResult], stream, color: bool) -> None:
     stats = [r.jev_stats for r in results if r.jev_stats]
-    if stats:
-        calls = sum(s.get("calls", 0) for s in stats)
-        toks = sum(s.get("input_tokens", 0) for s in stats)
-        skipped = sum(s.get("skipped", 0) for s in stats)
-        errors = sum(s.get("errors", 0) for s in stats)
-        note = f"Jev: {calls} calls, {toks:,} input tokens (~${toks * 0.042 / 1e6:.4f})"
-        if skipped:
-            note += f", {skipped} block(s) skipped as too long"
-        print(f"{_DIM if color else ''}{note}{_RESET if color else ''}", file=stream)
-        if errors:
-            warn = f"WARNING: {errors} Jev request(s) failed; this lint is incomplete."
-            print(f"{_COLOR['error'] if color else ''}{warn}{_RESET if color else ''}", file=stream)
+    if not stats:
+        return
+    calls = sum(s.get("calls", 0) for s in stats)
+    toks = sum(s.get("input_tokens", 0) for s in stats)
+    skipped = sum(s.get("skipped", 0) for s in stats)
+    errors = sum(s.get("errors", 0) for s in stats)
+    note = f"Jev: {calls} calls, {toks:,} input tokens (~${toks * 0.042 / 1e6:.4f})"
+    if skipped:
+        note += f", {skipped} block(s) skipped as too long"
+    print(f"{_DIM if color else ''}{note}{_RESET if color else ''}", file=stream)
+    if errors:
+        warn = f"WARNING: {errors} Jev request(s) failed; this lint is incomplete."
+        print(f"{_COLOR['error'] if color else ''}{warn}{_RESET if color else ''}", file=stream)
 
 
 def render_json(results: list[LintResult], stream=None) -> None:

@@ -85,3 +85,31 @@ def test_jev_missing_key_fails_loudly(capsys, monkeypatch, sloppy):
     assert rc == 2
     err = capsys.readouterr().err
     assert "TYPESAFE_API_KEY" in err and "--no-jev" in err
+
+
+def test_no_color_flag(capsys, sloppy):
+    rc = main([str(sloppy), "--no-jev", "--no-color"])
+    assert rc == 1
+    assert "\033[" not in capsys.readouterr().out  # no ANSI when --no-color
+
+
+def test_unsupported_file_exit_2(capsys, tmp_path):
+    bad = tmp_path / "x.pdf"
+    bad.write_text("not linted")
+    assert main([str(bad), "--no-jev"]) == 2
+    assert "unsupported" in capsys.readouterr().err
+
+
+def test_quiet_suppresses_summary(capsys, sloppy):
+    main([str(sloppy), "--no-jev", "--quiet"])
+    out = capsys.readouterr().out
+    assert "RIF002" in out
+    assert "findings in" not in out
+
+
+def test_version(capsys):
+    import pytest as _pytest
+
+    with _pytest.raises(SystemExit):
+        main(["--version"])
+    assert "riff" in capsys.readouterr().out
