@@ -82,3 +82,18 @@ field when it could be confused with a neighbouring rule), a `threshold`, and
 
 Keep changes focused. Run the checks above and regenerate the README rule table if
 you touched the catalog. Describe what the rule flags and why in the PR.
+
+## Releasing
+
+Publishing to PyPI is automated via `.github/workflows/pypi.yml`, which runs when a GitHub
+release is published. To cut a release:
+
+1. Bump `version` in `pyproject.toml` and update `CHANGELOG.md`.
+2. Tag the commit `vX.Y.Z` (the tag version must match `pyproject.toml`, or the workflow fails).
+3. Publish a GitHub release for that tag. The workflow builds the sdist and wheel with `uv build`
+   and uploads them with [PyPI Trusted Publishing](https://docs.pypi.org/trusted-publishers/) —
+   no API token.
+
+One-time setup on PyPI (maintainer): add a trusted publisher for the `riff-lint` project pointing
+at this repository, workflow `pypi.yml`, and environment `pypi`. Until that exists, the publish
+step will fail; everything up to it (version check and build) still runs.

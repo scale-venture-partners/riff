@@ -12,6 +12,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   strong cases; egregious vagueness still fires.
 
 ### Added
+- PyPI publish workflow: a GitHub release (tag `vX.Y.Z`) builds and publishes to PyPI via Trusted Publishing.
 - Tuned rules from a full per-type dogfood: `JEV304` (promotional) skips ad-copy types where
   selling is the point; `JEV207` (boilerplate) and `JEV502` (abstraction) skip terse genres
   (notes, SMS, chat, script) and no longer flag conventional sign-offs or functional lines.
