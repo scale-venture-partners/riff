@@ -23,12 +23,32 @@ deterministic rules alone.
 
 ```bash
 uv run ruff check src tests scripts   # lint
-uv run pytest                         # tests
+uv run pytest --cov                    # tests + coverage (floor: 90%)
 ```
 
 The static tests run offline. The live Jev tests skip automatically when
 `TYPESAFE_API_KEY` is unset, so a bare `pytest` is green without a key; set the
-key to exercise the model path.
+key to exercise the model path. Coverage is enforced at 90% in CI; `jev.py`'s
+network calls are excluded from the floor since only the live tests reach them.
+
+### Mutation testing
+
+Coverage says a line ran; mutation testing says a test would *notice* if the line
+were wrong. We use [mutmut](https://mutmut.readthedocs.io/) on the deterministic
+modules to keep tests strict.
+
+```bash
+OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES uv run mutmut run   # macOS needs the flag
+uv run mutmut results                                        # list survivors
+uv run mutmut show <mutant-id>                               # see one mutant's diff
+```
+
+A survivor is a mutation no test caught. Prefer killing it with an exact
+assertion (a specific value, count, or position) over a loose one. Expected
+survivors: `jev.py` (network) and `cli.py` (I/O) are covered by unit and live
+tests instead, and some mutations of log/error strings are equivalent and safe to
+leave. mutmut is not run in CI (too slow); run it locally when changing the
+deterministic modules.
 
 ## How rules work
 

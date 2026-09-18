@@ -7,6 +7,15 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Test-quality pass: broader unit coverage (extraction for every format, reporter,
+  text metrics, rule-registry helpers, and offline `jev` helpers), a 90% coverage
+  floor enforced in CI, and a mutmut mutation-testing setup with docs.
+
+### Fixed
+- The summary no longer reports "All checks passed" when Jev requests failed; a
+  keyless-or-errored run with zero findings is now flagged as incomplete.
+
+### Added
 - Generic message-level rules: `JEV010` formulaic (template) structure, `JEV111`
   canned low-pressure sign-off, `JEV207` interchangeable boilerplate, and `JEV208`
   faux-personalization. These catch AI-shaped outreach that is clean sentence by
