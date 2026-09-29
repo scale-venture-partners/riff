@@ -140,6 +140,25 @@ jev_rule(
     },
 )
 
+jev_rule(
+    "JEV011", "revision-artifact", "Leaves a note about its own edits that the final reader doesn't need",
+    category="Composition", source="Observed in AI-edited slides and docs", threshold=0.7,
+    skip_for=("release_notes", "notes"),
+    explanation="Editing-session residue: a revision asked for in chat leaks into the document as a footnote, "
+    "badge, or aside about what changed (\"+2 companies added\"), so notes accumulate that only the person who "
+    "requested the edit understands. Say the content, not the fact that it was added or changed.",
+    examples=("Revenue by segment (updated to include the two new companies)", "Note: revised per your feedback."),
+    question={
+        "question": "Does this passage mention that it was edited, updated, revised, or extended (for example "
+        "'updated to include', '+2 added', 'per your feedback', 'v2', 'revised', 'previously said X'), such that the "
+        "note only makes sense to someone who watched the document being changed?",
+        "includes": "Parenthetical or footnote badges about additions or removals, change-tracking asides, and "
+        "references to earlier drafts or to a request to change the document.",
+        "not_for": "Content that is about change itself (a changelog, a dated 'last updated' stamp, a discussion of "
+        "how a plan evolved, or a real correction the reader must know about).",
+    },
+)
+
 # ---------------------------------------------------------------- tone / voice (JEV1xx)
 
 jev_rule(

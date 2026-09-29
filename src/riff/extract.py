@@ -190,14 +190,63 @@ _HTML_BLOCKS = ("h1", "h2", "h3", "h4", "h5", "h6", "p", "li", "blockquote", "td
                 "figcaption", "title")
 
 
-def extract_html(html: str, name: str = "<html>") -> Document:
+_CHROME_TAGS = ("nav", "footer", "aside", "form", "button", "select", "dialog")
+_CHROME_ROLES = ("navigation", "banner", "contentinfo", "complementary", "search")
+_MIN_PARAGRAPH_CHARS = 25
+
+
+def _text_len(el) -> int:
+    return len(el.get_text(" ", strip=True))
+
+
+def _content_root(soup):
+    """The element holding a page's article body, with site chrome removed.
+
+    Prefers the largest <article>, then <main>, then <body>. Within that, narrows to the container whose direct
+    paragraphs hold at least half the text, which drops related-post lists and call-to-action sections that sit
+    beside the article inside <main>.
+    """
+    for tag in soup(_CHROME_TAGS):
+        tag.decompose()
+    for el in soup.find_all(attrs={"role": True}):
+        if el.get("role") in _CHROME_ROLES:
+            el.decompose()
+    articles = soup.find_all("article")
+    scope = max(articles, key=_text_len) if articles else (soup.find("main") or soup.body or soup)
+    if scope.name == "body" or scope is soup:
+        for tag in scope(["header"]):
+            tag.decompose()
+    weight: dict[int, int] = {}
+    parents = {}
+    for p in scope.find_all("p"):
+        n = _text_len(p)
+        if n >= _MIN_PARAGRAPH_CHARS and p.parent is not None:
+            weight[id(p.parent)] = weight.get(id(p.parent), 0) + n
+            parents[id(p.parent)] = p.parent
+    if weight:
+        top = max(weight, key=weight.get)
+        if weight[top] >= 0.5 * _text_len(scope):
+            return parents[top]
+    return scope
+
+
+def extract_html(html: str, name: str = "<html>", *, main_content: bool = False) -> Document:
+    """Extract blocks from HTML. With main_content, keep only the article body plus its page title heading."""
     from bs4 import BeautifulSoup
 
     soup = BeautifulSoup(html, "html.parser")
     for tag in soup(["script", "style", "noscript", "svg", "pre", "code"]):
         tag.decompose()
+    elements = soup.find_all(_HTML_BLOCKS)
+    if main_content:
+        title = soup.find("h1")
+        root = _content_root(soup)
+        elements = root.find_all(_HTML_BLOCKS)
+        if title is not None and not title.decomposed and title not in elements:
+            elements.insert(0, title)
+        elements = [el for el in elements if el.name != "title"]
     blocks: list[Block] = []
-    for el in soup.find_all(_HTML_BLOCKS):
+    for el in elements:
         if el.find(_HTML_BLOCKS):
             continue
         text = el.get_text(" ", strip=True)
@@ -217,8 +266,11 @@ def extract_html(html: str, name: str = "<html>") -> Document:
             kind, level = "paragraph", 0
         first = next((c for c in el.children if getattr(c, "name", None) or str(c).strip()), None)
         bold_lead = getattr(first, "name", None) in ("strong", "b")
+        # Fetched pages are often minified onto one line, so source lines locate nothing; number the blocks.
+        label = f"block {len(blocks) + 1}" if main_content else ""
         blocks.append(
-            Block(text=text, kind=kind, line=line, level=level, bold_lead=bold_lead, raw_lines=[(line, text)])
+            Block(text=text, kind=kind, line=line, level=level, bold_lead=bold_lead, label=label,
+                  raw_lines=[(line, text)])
         )
     return Document(path=name, format="html", blocks=blocks)
 

@@ -84,3 +84,15 @@ async def test_form_specific_rule_fires_for_its_type_live():
     settings = Settings(select=("JEV660",), forced_type="release_notes")
     findings, _ = await run_jev(doc, ["JEV660"], settings)
     assert "JEV660" in {f.code for f in findings}
+
+
+async def test_revision_artifact_detected_live():
+    doc = extract_markdown("Note: this slide has been revised per your feedback to add Acme and Beta.")
+    findings, _ = await run_jev(doc, ["JEV011"], Settings(select=("JEV011",)))
+    assert "JEV011" in {f.code for f in findings}
+
+
+async def test_dated_update_stamp_is_not_a_revision_artifact_live():
+    doc = extract_markdown("Last updated 2026-09-01. Acme, Beta, and Gamma each doubled ARR over the past year.")
+    findings, _ = await run_jev(doc, ["JEV011"], Settings(select=("JEV011",)))
+    assert findings == []

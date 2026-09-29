@@ -8,13 +8,14 @@ from pathlib import Path
 
 from riff import __version__
 from riff.doctype import TYPE_NAMES, is_valid_type
-from riff.engine import lint_path
+from riff.engine import lint_document, lint_path
 from riff.extract import SUPPORTED
 from riff.jev import JevUnavailable
 from riff.report import render_json, render_text
 from riff.rules import load_rules
 from riff.rules.base import REGISTRY
 from riff.settings import Settings, find_config, load_settings
+from riff.web import extract_url, is_url
 
 
 def _split_list(value: str | None) -> tuple[str, ...]:
@@ -32,7 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
         "  riff --list-rules\n  riff --explain JEV001",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("paths", nargs="*", help="files to lint (.md .txt .html .docx .pptx)")
+    p.add_argument("paths", nargs="*", help="files or http(s) URLs to lint (.md .txt .html .docx .pptx)")
     p.add_argument("-f", "--file", action="append", default=[], metavar="FILE",
                    help="a file to lint (repeatable); same as a positional path")
     p.add_argument("--select", type=_split_list, help="only these rule codes/prefixes (comma-separated)")
@@ -154,6 +155,16 @@ def main(argv: list[str] | None = None) -> int:
     results = []
     any_error = False
     for path in paths:
+        if is_url(path):
+            try:
+                results.append(lint_document(extract_url(path), settings_for(Path.cwd() / "_"), debug_jev=args.debug_jev))
+            except JevUnavailable as exc:
+                print(f"riff: {exc}", file=sys.stderr)
+                return 2
+            except Exception as exc:  # noqa: BLE001 - report the URL that failed and keep going
+                print(f"{path}: failed to lint: {type(exc).__name__}: {exc}", file=sys.stderr)
+                any_error = True
+            continue
         p = Path(path)
         if not p.exists():
             print(f"{path}: no such file", file=sys.stderr)

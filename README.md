@@ -67,6 +67,7 @@ clone without installing, prefix each with `uv run` (e.g. `uv run riff draft.md`
 riff draft.md                    # lint one file (positional)
 riff -f report.docx              # or the -f/--file flag form
 riff *.md notes.txt slides.pptx  # many files, mixed formats
+riff https://example.com/blog/post  # fetch a web page and lint just its article body
 riff draft.md --no-jev           # static rules only, no API key needed
 riff draft.md --select JEV,RIF   # only these codes/prefixes
 riff draft.md --ignore JEV002    # keep defaults, drop one rule
@@ -81,6 +82,11 @@ riff --explain JEV001            # one rule in detail
 **Supported formats:** Markdown (`.md`), plain text (`.txt`), HTML (`.html`), Word (`.docx`),
 PowerPoint (`.pptx`). Findings report a line and column for text formats, and a paragraph or
 slide label for Office formats.
+
+**URLs:** pass an `http(s)` URL to fetch the page and lint only its article body. riff picks the
+largest `<article>`, else `<main>`, else `<body>`, drops navigation, headers, footers, and sidebars,
+and narrows to the block that holds most of the paragraph text. Findings are labelled `block N`
+(position in the extracted body), since fetched HTML is often minified onto one line.
 
 **Exit codes:** `0` clean, `1` findings, `2` usage or file error.
 
@@ -172,7 +178,7 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 
 ## Rules
 
-62 rules (56 semantic, 6 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
+64 rules (57 semantic, 7 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
 
 ### CLR — Clarity metrics (arithmetic Jev can't do)
 
@@ -196,6 +202,7 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV008` | enumerated-prose |   | Jev | A listicle disguised as prose ("The first… The second…") | tropes.fyi |
 | `JEV009` | never-ending-conclusion | · | Jev | The ending stacks clause after clause instead of stopping | tropes.fyi |
 | `JEV010` | formulaic-structure |   | Jev | Follows a formulaic template, hitting every expected beat in order | tropes.fyi |
+| `JEV011` | revision-artifact |   | Jev | Leaves a note about its own edits that the final reader doesn't need | Observed in AI-edited slides and docs |
 | `JEV101` | stakes-inflation |   | Jev | Inflates ordinary stakes to world-historical significance | tropes.fyi |
 | `JEV102` | invented-concept-label |   | Jev | Coins an abstract term as if it were established | tropes.fyi |
 | `JEV103` | quotable-bait |   | Jev | A standalone quotable line that carries no real information | tropes.fyi |
@@ -250,6 +257,7 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `RIF001` | decorative-unicode |   | static | Curly quotes or arrows (glyphs Jev can't see) | tropes.fyi |
 | `RIF002` | title-case-heading |   | static | Heading capitalizes every word | tropes.fyi |
 | `RIF003` | bold-first-bullets |   | static | Most list items open with a bold lead-in | tropes.fyi |
+| `RIF004` | revision-badge |   | static | Note about an edit ("+2 added", "updated to include") left in the text | Observed in AI-edited slides and docs |
 
 ## Sources
 

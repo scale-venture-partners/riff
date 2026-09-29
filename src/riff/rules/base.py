@@ -190,6 +190,7 @@ def static_rule(
     scope: Scope = "block",
     default: bool = True,
     severity: Severity = "warning",
+    skip_for: tuple[str, ...] = (),
 ) -> Callable[[Checker], Rule]:
     def deco(fn: Checker) -> Rule:
         return register(
@@ -206,6 +207,7 @@ def static_rule(
                 default=default,
                 severity=severity,
                 check=fn,
+                skip_for=skip_for,
             )
         )
 
