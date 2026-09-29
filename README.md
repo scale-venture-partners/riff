@@ -1,7 +1,7 @@
 # riff
 
 [![CI](https://github.com/scale-venture-partners/riff/actions/workflows/ci.yml/badge.svg)](https://github.com/scale-venture-partners/riff/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-00C756.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A small, fast prose linter. It reads a document, flags the writing tells and clarity
 problems it finds, and reports them with **ruff-style rule codes** you can select, ignore,
@@ -68,6 +68,7 @@ riff draft.md                    # lint one file (positional)
 riff -f report.docx              # or the -f/--file flag form
 riff *.md notes.txt slides.pptx  # many files, mixed formats
 riff https://example.com/blog/post  # fetch a web page and lint just its article body
+riff https://example.com/deck.pptx  # or a linked .pptx / .docx file
 riff draft.md --no-jev           # static rules only, no API key needed
 riff draft.md --select JEV,RIF   # only these codes/prefixes
 riff draft.md --ignore JEV002    # keep defaults, drop one rule
@@ -87,6 +88,9 @@ slide label for Office formats.
 largest `<article>`, else `<main>`, else `<body>`, drops navigation, headers, footers, and sidebars,
 and narrows to the block that holds most of the paragraph text. Findings are labelled `block N`
 (position in the extracted body), since fetched HTML is often minified onto one line.
+A URL that serves a `.pptx` or `.docx` file (by content type, or by the URL's extension when the
+host sends `application/octet-stream`) is downloaded and linted like the local file, with slide or
+paragraph labels.
 
 **Exit codes:** `0` clean, `1` findings, `2` usage or file error.
 
@@ -312,14 +316,3 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for how rules work and how to add one.
 ## License
 
 [MIT](LICENSE) © Scale Venture Partners.
-
-## About Scale Venture Partners
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="assets/scale-logo-dark.png">
-  <img alt="Scale Venture Partners" src="assets/scale-logo-light.png" width="160">
-</picture>
-
-**We back the few who can go the distance.** Scale Venture Partners partners
-with early-stage AI companies on the journey from founder-led growth to a
-go-to-market machine. [scalevp.com](https://www.scalevp.com)

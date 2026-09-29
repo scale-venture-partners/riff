@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -9,7 +10,7 @@ import pytest
 
 from riff.cli import main
 from riff.extract import extract_html
-from riff.web import extract_url, fetch_html, is_url
+from riff.web import extract_url, fetch, is_url
 
 BODY = (
     "The migration finished on Tuesday after three weeks of careful work by the platform team. "
@@ -33,12 +34,48 @@ PAGE = f"""<html><head><title>Migration story | Insights | Acme</title></head><b
 </body></html>"""
 
 
+PPTX_TYPE = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+
+def _pptx_bytes() -> bytes:
+    from pptx import Presentation
+
+    prs = Presentation()
+    slide = prs.slides.add_slide(prs.slide_layouts[1])
+    slide.shapes.title.text = "Portfolio overview (+2 companies added)"
+    slide.placeholders[1].text = "Acme and Beta each doubled ARR over the past year."
+    buf = io.BytesIO()
+    prs.save(buf)
+    return buf.getvalue()
+
+
+def _docx_bytes() -> bytes:
+    import docx
+
+    d = docx.Document()
+    d.add_paragraph("A short paragraph of ordinary prose for the word document.")
+    buf = io.BytesIO()
+    d.save(buf)
+    return buf.getvalue()
+
+
 class _Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/page":
             body, ctype = PAGE.encode(), "text/html; charset=utf-8"
         elif self.path == "/text":
             body, ctype = b"plain text", "text/plain"
+        elif self.path == "/deck.pptx":
+            body, ctype = _pptx_bytes(), PPTX_TYPE
+        elif self.path == "/download/deck.pptx":
+            body, ctype = _pptx_bytes(), "application/octet-stream"
+        elif self.path == "/report.docx":
+            body, ctype = _docx_bytes(), DOCX_TYPE
+        elif self.path == "/fake.pptx":
+            body, ctype = b"<html>login page</html>", "text/plain"
+        elif self.path == "/junk.pptx":
+            body, ctype = b"not a zip file", PPTX_TYPE
         else:
             self.send_error(404)
             return
@@ -81,15 +118,15 @@ def test_extract_url_keeps_title_and_body_drops_chrome(base_url):
 
 
 def test_fetch_rejects_non_html_and_http_errors(base_url):
-    with pytest.raises(ValueError, match="expected an HTML page, got text/plain"):
-        fetch_html(f"{base_url}/text")
+    with pytest.raises(ValueError, match="expected an HTML page or a .pptx/.docx file, got text/plain"):
+        fetch(f"{base_url}/text")
     with pytest.raises(ValueError, match="HTTP 404"):
-        fetch_html(f"{base_url}/missing")
+        fetch(f"{base_url}/missing")
 
 
 def test_fetch_reports_unreachable_host():
     with pytest.raises(ValueError, match="could not fetch"):
-        fetch_html("http://127.0.0.1:1/")
+        fetch("http://127.0.0.1:1/")
 
 
 def test_main_content_prefers_largest_article():
@@ -148,3 +185,38 @@ def test_cli_reports_fetch_failure_nonzero(capsys):
     rc = main(["http://127.0.0.1:1/", "--no-jev"])
     assert rc == 2
     assert "failed to lint" in capsys.readouterr().err
+
+
+def test_extract_url_reads_pptx_by_content_type(base_url):
+    doc = extract_url(f"{base_url}/deck.pptx")
+    assert doc.path == f"{base_url}/deck.pptx"
+    assert doc.format == "pptx"
+    assert "Portfolio overview (+2 companies added)" in texts(doc)
+    assert "Acme and Beta each doubled ARR over the past year." in texts(doc)
+
+
+def test_extract_url_reads_pptx_served_as_octet_stream(base_url):
+    assert "Portfolio overview (+2 companies added)" in texts(extract_url(f"{base_url}/download/deck.pptx"))
+
+
+def test_extract_url_reads_docx(base_url):
+    doc = extract_url(f"{base_url}/report.docx")
+    assert doc.format == "docx"
+    assert texts(doc) == ["A short paragraph of ordinary prose for the word document."]
+
+
+def test_pptx_suffix_does_not_override_an_html_or_text_response(base_url):
+    with pytest.raises(ValueError, match="got text/plain"):
+        fetch(f"{base_url}/fake.pptx")
+
+
+def test_corrupt_office_download_fails_loudly(base_url):
+    with pytest.raises(ValueError, match="could not read as .pptx"):
+        extract_url(f"{base_url}/junk.pptx")
+
+
+def test_cli_lints_pptx_url_and_finds_revision_badge(base_url, capsys):
+    rc = main([f"{base_url}/deck.pptx", "--no-jev", "--type", "memo", "--no-color", "--select", "RIF004"])
+    out = capsys.readouterr().out
+    assert rc == 1
+    assert f"{base_url}/deck.pptx:slide 1: RIF004" in out

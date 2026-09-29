@@ -89,6 +89,7 @@ riff draft.md                    # lint one file (positional)
 riff -f report.docx              # or the -f/--file flag form
 riff *.md notes.txt slides.pptx  # many files, mixed formats
 riff https://example.com/blog/post  # fetch a web page and lint just its article body
+riff https://example.com/deck.pptx  # or a linked .pptx / .docx file
 riff draft.md --no-jev           # static rules only, no API key needed
 riff draft.md --select JEV,RIF   # only these codes/prefixes
 riff draft.md --ignore JEV002    # keep defaults, drop one rule
@@ -108,6 +109,9 @@ slide label for Office formats.
 largest `<article>`, else `<main>`, else `<body>`, drops navigation, headers, footers, and sidebars,
 and narrows to the block that holds most of the paragraph text. Findings are labelled `block N`
 (position in the extracted body), since fetched HTML is often minified onto one line.
+A URL that serves a `.pptx` or `.docx` file (by content type, or by the URL's extension when the
+host sends `application/octet-stream`) is downloaded and linted like the local file, with slide or
+paragraph labels.
 
 **Exit codes:** `0` clean, `1` findings, `2` usage or file error.
 

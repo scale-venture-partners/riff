@@ -7,6 +7,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- URLs can point at a `.pptx` or `.docx` file: riff downloads it (up to 25 MB) and lints it like a local
+  file. Detected by content type, or by the URL extension for hosts that send `application/octet-stream`.
 - Lint a web page by URL: `riff https://…` fetches the page and lints only its article body (largest
   `<article>`, else `<main>`, else `<body>`, minus nav/header/footer/sidebar chrome). Findings are
   labelled `block N`. HTML only; no new dependencies.
