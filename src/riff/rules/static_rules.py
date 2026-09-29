@@ -5,7 +5,9 @@ Everything judgment-based lives in jev_rules.py. What stays here is only:
   - structural facts that live in markup, not prose (bold-first bullets);
   - capitalization, an exact character property (Title Case headings);
   - cross-block comparison Jev cannot do in a per-block question (duplicate paragraphs);
-  - arithmetic Jev is documented not to do reliably (sentence length, reading grade).
+  - arithmetic Jev is documented not to do reliably (sentence length, reading grade);
+  - short fixed-shape badges ("(+2 companies added)") in titles and bullets, which the per-block Jev pass
+    skips because it ignores headings and blocks under eight words.
 
 These are exact or numeric, not fragile pattern-matching, so regex/parsing is the right tool.
 
@@ -80,6 +82,34 @@ def bold_bullets(doc: Document, settings: Settings) -> list[Finding]:
     if len(items) >= 3 and len(bold) / len(items) >= 0.6:
         return [finding("RIF003", doc, b, f"bold lead-in on {len(bold)}/{len(items)} list items") for b in bold]
     return []
+
+
+_CHANGE = r"(?:added|removed|dropped|updated|revised|edited|expanded|extended|amended|corrected)"
+_REVISION_NOTE = re.compile(
+    r"[(\[]\s*\+\s*\d+[^)\]]*?\b" + _CHANGE + r"\b[^)\]]*[)\]]"  # (+2 companies added)
+    r"|[(\[]\s*" + _CHANGE + r"\s+(?:to|per|with|after|following|based\s+on|for)\b[^)\]]*[)\]]"  # (updated to include X)
+    r"|[(\[]\s*now\s+(?:includes|shows|reflects|covers)\b[^)\]]*[)\]]"
+    r"|\b(?:per|as\s+per)\s+(?:your|the)\s+(?:feedback|request|comments?)\b"
+    r"|\bas\s+(?:you\s+)?requested\b|\bat\s+your\s+request\b"
+    r"|^\s*" + _CHANGE + r"\s*:\s*(?:added|removed|dropped|now|to|per|as)\b",  # "Updated: removed the table"
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+@static_rule("RIF004", "revision-badge", "Note about an edit (\"+2 added\", \"updated to include\") left in the text",
+             category="Composition", source="Observed in AI-edited slides and docs", skip_for=("release_notes", "notes"),
+             explanation="A revision requested in chat leaks into the document as a badge or aside about what changed, "
+             "so the final reader gets notes that only the requester understands. State the content, not the edit. "
+             "This catches short fixed-shape forms in titles, bullets, and table cells, which the per-block "
+             "semantic pass (JEV011) does not see.",
+             examples=("Portfolio overview (+2 companies added)", "Revenue by segment (updated to include Acme)"))
+def revision_badge(doc: Document, settings: Settings) -> list[Finding]:
+    out = []
+    for block in doc.blocks:
+        for m, line, col in regex_matches(block, _REVISION_NOTE):
+            out.append(finding("RIF004", doc, block, f"note about an edit ('{m.group(0).strip()}'); state the content instead",
+                               line=line, col=col, snippet=snippet_of(m.string, m.start())))
+    return out
 
 
 # ---------------------------------------------------------------- clarity metrics (CLR0xx)

@@ -76,3 +76,38 @@ def test_default_off_reading_grade_needs_opt_in():
     settings = Settings(jev=False, extend_select=("CLR002",))
     doc = extract_text(dense)
     assert "CLR002" in [f.code for f in lint_document(doc, settings).findings]
+
+
+def _revision_hits(text):
+    doc = extract_markdown(text)
+    return [(f.line, f.col, f.snippet) for f in lint_document(doc, Settings(jev=False)).findings if f.code == "RIF004"]
+
+
+def test_revision_badge_flags_count_badge_in_heading():
+    hits = _revision_hits("# Portfolio overview (+2 companies added)\n\nbody text here.")
+    assert [(line, col) for line, col, _ in hits] == [(1, 22)]
+
+
+def test_revision_badge_flags_short_bullets_and_asides():
+    md = "- Zeta and Eta (added per your request)\n- Revenue by segment (updated to include Acme)\n- Note: as requested."
+    assert [line for line, _, _ in _revision_hits(md)] == [1, 2, 3]
+
+
+def test_revision_badge_flags_updated_prefix_line():
+    assert [line for line, _, _ in _revision_hits("Updated: removed the pricing table.")] == [1]
+
+
+def test_revision_badge_ignores_legitimate_parentheticals_and_stamps():
+    ok = (
+        "Revenue grew 14% (+3 pts vs. plan).\n\n"
+        "Last updated: 2026-09-01.\n\n"
+        "The API was updated in March to add pagination.\n\n"
+        "We added two engineers to the platform team."
+    )
+    assert _revision_hits(ok) == []
+
+
+def test_revision_badge_skipped_for_release_notes():
+    settings = Settings(jev=False, forced_type="release_notes")
+    doc = extract_markdown("- Search (added per your request)")
+    assert "RIF004" not in [f.code for f in lint_document(doc, settings).findings]

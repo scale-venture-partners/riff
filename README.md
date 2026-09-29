@@ -172,7 +172,7 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 
 ## Rules
 
-62 rules (56 semantic, 6 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
+64 rules (57 semantic, 7 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
 
 ### CLR — Clarity metrics (arithmetic Jev can't do)
 
@@ -196,6 +196,7 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV008` | enumerated-prose |   | Jev | A listicle disguised as prose ("The first… The second…") | tropes.fyi |
 | `JEV009` | never-ending-conclusion | · | Jev | The ending stacks clause after clause instead of stopping | tropes.fyi |
 | `JEV010` | formulaic-structure |   | Jev | Follows a formulaic template, hitting every expected beat in order | tropes.fyi |
+| `JEV011` | revision-artifact |   | Jev | Leaves a note about its own edits that the final reader doesn't need | Observed in AI-edited slides and docs |
 | `JEV101` | stakes-inflation |   | Jev | Inflates ordinary stakes to world-historical significance | tropes.fyi |
 | `JEV102` | invented-concept-label |   | Jev | Coins an abstract term as if it were established | tropes.fyi |
 | `JEV103` | quotable-bait |   | Jev | A standalone quotable line that carries no real information | tropes.fyi |
@@ -250,6 +251,7 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `RIF001` | decorative-unicode |   | static | Curly quotes or arrows (glyphs Jev can't see) | tropes.fyi |
 | `RIF002` | title-case-heading |   | static | Heading capitalizes every word | tropes.fyi |
 | `RIF003` | bold-first-bullets |   | static | Most list items open with a bold lead-in | tropes.fyi |
+| `RIF004` | revision-badge |   | static | Note about an edit ("+2 added", "updated to include") left in the text | Observed in AI-edited slides and docs |
 
 ## Sources
 

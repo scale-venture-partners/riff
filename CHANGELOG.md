@@ -6,6 +6,13 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- Revision-artifact detection: flags notes about the document's own edits that leak in from a chat
+  revision ("Portfolio overview (+2 companies added)", "updated to include Acme", "per your feedback").
+  `RIF004` is a static check for the short badge forms in titles, bullets, and table cells, which the
+  per-block Jev pass skips; `JEV011` asks Jev about longer asides ("previously this said X"). Both skip
+  `release_notes` and `notes`. `static_rule` now accepts `skip_for`.
+
 ### Changed
 - Raised the `JEV502` (vague-abstraction) threshold to 0.85. On a corpus of real professional
   documents it was the most-fired rule and flagged concrete text, so it now triggers only on
