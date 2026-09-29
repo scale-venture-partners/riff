@@ -88,6 +88,7 @@ clone without installing, prefix each with `uv run` (e.g. `uv run riff draft.md`
 riff draft.md                    # lint one file (positional)
 riff -f report.docx              # or the -f/--file flag form
 riff *.md notes.txt slides.pptx  # many files, mixed formats
+riff https://example.com/blog/post  # fetch a web page and lint just its article body
 riff draft.md --no-jev           # static rules only, no API key needed
 riff draft.md --select JEV,RIF   # only these codes/prefixes
 riff draft.md --ignore JEV002    # keep defaults, drop one rule
@@ -102,6 +103,11 @@ riff --explain JEV001            # one rule in detail
 **Supported formats:** Markdown (`.md`), plain text (`.txt`), HTML (`.html`), Word (`.docx`),
 PowerPoint (`.pptx`). Findings report a line and column for text formats, and a paragraph or
 slide label for Office formats.
+
+**URLs:** pass an `http(s)` URL to fetch the page and lint only its article body. riff picks the
+largest `<article>`, else `<main>`, else `<body>`, drops navigation, headers, footers, and sidebars,
+and narrows to the block that holds most of the paragraph text. Findings are labelled `block N`
+(position in the extracted body), since fetched HTML is often minified onto one line.
 
 **Exit codes:** `0` clean, `1` findings, `2` usage or file error.
 
