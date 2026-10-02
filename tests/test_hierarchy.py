@@ -343,3 +343,28 @@ def test_list_rules_shows_each_rules_level(capsys):
     assert main(["--explain", "JEV711"]) == 0
     assert "scope: document (outline view)" in capsys.readouterr().out
 
+
+
+# -- section dividers --------------------------------------------------------------------------------
+
+def test_a_section_numbered_part_or_with_nothing_under_it_is_a_divider(make_deck):
+    doc = make_deck([
+        [("The eight-step pattern", 36), ("Part 01", 12), ("Each step is general.", 14)],
+        [("The evidence", 36), ("Section 2 of the talk", 12)],
+        [("Chapter iii closes the loop", 36), ("Chapter III", 12)],
+        [("A title alone on its slide", 36)],
+        [("Churn fell after the pricing change", 36), ("Monthly churn went from 4% to 2%.", 14)],
+        [("Parts of the plan", 36), ("Parts arrive in two weeks from the supplier.", 14)],
+    ])
+    assert [s.is_divider for s in doc.sections] == [True, True, True, True, False, False]
+
+
+def test_title_and_section_rules_skip_dividers(make_deck):
+    doc = make_deck([
+        [("The eight-step pattern", 36), ("Part 01", 12), ("The sections that follow show each step for decks.", 14)],
+        [("Churn fell after the pricing change", 36), ("Monthly churn went from 4.1% to 2.0% after annual plans.", 14)],
+    ])
+    titles = [u.state["title"] for u in _units(doc, [TITLE])]
+    sections = [u.state["title"] for u in _units(doc, [SECT])]
+    assert titles == sections == ["Churn fell after the pricing change"]
+    assert _units(doc, [TITLE])[0].state["position"] == "2 of 2", "positions still count the divider"

@@ -40,15 +40,32 @@ _GLYPH_NAME = {
 }
 
 
+# A pair of typographic quotes enclosing a whole block is a pull quote -- a slide's
+# statement, a blockquote set by a layout -- not a tell the writer typed.
+_PULL_QUOTE = re.compile(r"^\s*([\u201c\u2018])[^\u201c\u201d]*([\u201d\u2019])\s*$", re.S)
+
+
+def _pull_quote_marks(text: str) -> set[int]:
+    """Positions of quote marks that are layout, not writing: the pair enclosing a whole
+    block, or a block that is nothing but quote marks (a hanging quote set as its own box)."""
+    if text.strip() and not text.strip("\u201c\u201d\u2018\u2019 \n"):
+        return {i for i, ch in enumerate(text) if ch in "\u201c\u201d\u2018\u2019"}
+    m = _PULL_QUOTE.match(text)
+    return {m.start(1), m.start(2)} if m else set()
+
+
 @static_rule("RIF001", "decorative-unicode", "Curly quotes or arrows (glyphs Jev can't see)",
              category="Formatting", source=TROPES,
              explanation="Typing in a plain editor produces straight quotes and ASCII arrows. Curly quotes and → are a tell. "
-             "This is an exact glyph check because the model is given normalized text and never sees the character.",
+             "This is an exact glyph check because the model is given normalized text and never sees the character. "
+             "A pair of quotes enclosing a whole block is a pull quote a layout set, and is not flagged.",
              examples=("Input → Processing → Output", "“smart quotes”"))
 def decorative_unicode(doc: Document, settings: Settings) -> list[Finding]:
     out = []
     for block in doc.prose + doc.headings:
         for m, line, col in regex_matches(block, _DECORATIVE):
+            if m.start() in _pull_quote_marks(m.string):
+                continue
             out.append(finding("RIF001", doc, block, f"decorative unicode ({_GLYPH_NAME.get(m.group(0), m.group(0))})",
                                line=line, col=col, snippet=snippet_of(m.string, m.start())))
     return out

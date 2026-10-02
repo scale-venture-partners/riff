@@ -36,6 +36,9 @@ class Block:
         return f"{self.label}:" if self.label else f"{self.line}:{self.col}"
 
 
+_DIVIDER_OPENING = re.compile(r"^(?:part|section|chapter|module|act|unit)\s+(?:\d{1,3}|[ivxlc]{1,6})\b", re.I)
+
+
 @dataclass
 class Section:
     """A heading and everything under it -- or, in a deck, one slide.
@@ -75,6 +78,17 @@ class Section:
     def anchor(self) -> Block | None:
         """Where a finding about the whole section is reported."""
         return self.title or (self.blocks[0] if self.blocks else None)
+
+    @property
+    def is_divider(self) -> bool:
+        """A section that opens a part rather than making a point: its first words number the
+        part ("Part 01", "Section 2", "Chapter III"), or nothing sits under its title. A divider's
+        title is a label by design and its body has nothing to deliver, so title and section
+        rules leave it alone."""
+        words = self.body_text.split()
+        if not words:
+            return True
+        return _DIVIDER_OPENING.match(" ".join(words[:3])) is not None
 
 
 @dataclass
