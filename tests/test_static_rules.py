@@ -111,3 +111,14 @@ def test_revision_badge_skipped_for_release_notes():
     settings = Settings(jev=False, forced_type="release_notes")
     doc = extract_markdown("- Search (added per your request)")
     assert "RIF004" not in [f.code for f in lint_document(doc, settings).findings]
+
+
+def test_a_pull_quote_enclosing_its_block_is_not_decorative():
+    # A layout that sets a statement in typographic quotes, as a slide library does.
+    from riff.rules.base import REGISTRY
+
+    check = REGISTRY["RIF001"].check
+    assert check(extract_markdown("\u201cThe model is the same. What changes is the harness.\u201d"), Settings()) == []
+    inline = check(extract_markdown("He said \u201chello\u201d and left."), Settings())
+    assert len(inline) == 2, "quotes inside a sentence are still the tell"
+    assert len(check(extract_markdown("\u201cAn opening quote that never closes"), Settings())) == 1

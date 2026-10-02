@@ -162,12 +162,15 @@ def plan_units(doc: Document, codes: list[str], settings: Settings) -> list[Unit
 
     sections = list(doc.walk_sections())
     titled = [s for s in sections if s.title is not None]
+    # Title and section rules judge claims and whether bodies deliver them; a divider has
+    # neither. Positions still count every titled section, so "3 of 12" stays true.
+    judged = [s for s in titled if not s.is_divider]
 
     if codes_ := by_scope.get(("title", "text")):
         # A title is judged with where it sits and what it heads: a cover, a divider and a closing
         # slide carry label-like titles by design, and only their place and body give that away.
         for i, s in enumerate(titled, start=1):
-            if word_count(s.title.text) >= 2:
+            if s in judged and word_count(s.title.text) >= 2:
                 units.append(Unit("title", s.title, {
                     "kind": _title_kind(doc, s), "title": s.title.text,
                     "position": f"{i} of {len(titled)}",
@@ -178,7 +181,7 @@ def plan_units(doc: Document, codes: list[str], settings: Settings) -> list[Unit
         # attribution, a divider's subtitle -- there is no body to deliver anything, so no question.
         for i, s in enumerate(titled, start=1):
             body = s.body_text
-            if word_count(body) >= 2 * floor:
+            if s in judged and word_count(body) >= 2 * floor:
                 where = f"{'slide' if doc.format == 'pptx' else 'section'} {i} of {len(titled)}"
                 state = {"position": where, "title": s.title.text, "body": body}
                 if s.visuals:

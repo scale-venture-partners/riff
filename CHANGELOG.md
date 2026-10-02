@@ -6,6 +6,14 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- `RIF001` no longer flags a pair of typographic quotes that encloses a whole block: a pull quote
+  set by a layout (a slide library's statement slide wraps every quote in them), not a tell the
+  writer typed. Curly quotes inside a sentence are still flagged.
+- Title and section rules (`JEV701`, `JEV702`, `JEV703`) skip section dividers: a section whose
+  opening numbers a part ("Part 01", "Section 2", "Chapter III") or that has nothing under its
+  title. A divider's title is a label by design. `Section.is_divider` exposes the test.
+
 ### Added
 - **Documents are read as a hierarchy**: document > sections > titles and blocks > sentences.
   Markdown, HTML and Word headings nest into sections; a deck's slides are its sections, with the
