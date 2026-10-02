@@ -37,14 +37,82 @@ class Block:
 
 
 @dataclass
+class Section:
+    """A heading and everything under it -- or, in a deck, one slide.
+
+    Sections nest by heading level: an h3 is a child of the h2 above it. `blocks` holds the section's
+    own content; `children` its subsections. A deck's slides are flat, each at level 1, and a slide's
+    speaker notes are part of its section.
+    """
+
+    title: Block | None
+    blocks: list[Block]
+    level: int
+    label: str
+    children: list[Section] = field(default_factory=list)
+    # Pictures and charts in the section. riff reads only text, so a section whose evidence is a chart
+    # looks unsupported to a text-only judge unless it is told the chart is there.
+    visuals: int = 0
+
+    def walk(self):
+        yield self
+        for child in self.children:
+            yield from child.walk()
+
+    @property
+    def body(self) -> list[Block]:
+        """The section's content, its subsections' included, without any headings."""
+        out = list(self.blocks)
+        for child in self.children:
+            out += child.body
+        return out
+
+    @property
+    def body_text(self) -> str:
+        return "\n\n".join(b.text for b in self.body if b.text)
+
+    @property
+    def anchor(self) -> Block | None:
+        """Where a finding about the whole section is reported."""
+        return self.title or (self.blocks[0] if self.blocks else None)
+
+
+@dataclass
 class Document:
+    """A file read as a hierarchy: document > sections > titles and paragraphs > sentences.
+
+    `blocks` is the flat sequence of leaf units (paragraphs, list items, table cells, notes, titles
+    and headings) in reading order, which is what most rules walk. `sections` groups those blocks
+    under their headings -- or slides -- so a rule can judge a whole section, or the document's
+    outline, rather than one paragraph at a time.
+    """
+
     path: str
     format: str
     blocks: list[Block]
+    _sections: list[Section] | None = field(default=None, repr=False, compare=False)
+    # Pictures and charts per slide, for decks (slide number -> count).
+    visuals: dict[int, int] = field(default_factory=dict, compare=False)
 
     @property
     def prose(self) -> list[Block]:
         return [b for b in self.blocks if b.is_prose]
+
+    @property
+    def sections(self) -> list[Section]:
+        """The top-level sections, each holding its subsections."""
+        if self._sections is None:
+            self._sections = build_sections(self)
+        return self._sections
+
+    def walk_sections(self):
+        for section in self.sections:
+            yield from section.walk()
+
+    @property
+    def outline(self) -> list[tuple[int, str, str]]:
+        """(level, label, title) for every titled section, in order: the document read as its headings."""
+        return [(s.level, s.label, s.title.text) for s in self.walk_sections() if s.title is not None]
 
     @property
     def headings(self) -> list[Block]:
@@ -57,6 +125,63 @@ class Document:
     @property
     def word_count(self) -> int:
         return sum(b.word_count for b in self.blocks)
+
+
+def _slide_number(block: Block) -> int:
+    return block.line
+
+
+def _merge_titles(parts: list[Block]) -> Block:
+    """A title set as several paragraphs -- a wrapped line, an accent line -- is one title."""
+    first = parts[0]
+    if len(parts) == 1:
+        return first
+    text = " ".join(p.text for p in parts)
+    return Block(text=text, kind=first.kind, line=first.line, col=first.col, label=first.label,
+                 level=first.level, raw_lines=[(first.line, text)])
+
+
+def _slide_sections(doc: Document) -> list[Section]:
+    sections: dict[int, list[Block]] = {}
+    for block in doc.blocks:
+        sections.setdefault(_slide_number(block), []).append(block)
+    out = []
+    for number, blocks in sections.items():
+        titles = [b for b in blocks if b.kind == "title"]
+        body = [b for b in blocks if b.kind != "title"]
+        out.append(Section(title=_merge_titles(titles) if titles else None, blocks=body, level=1,
+                           label=f"slide {number}", visuals=doc.visuals.get(number, 0)))
+    return out
+
+
+def _heading_sections(doc: Document) -> list[Section]:
+    """Nest sections by heading level. Content before the first heading is an untitled lead section;
+    a document title (an HTML <title>, a Word 'Title' paragraph) names the document, not a section."""
+    roots: list[Section] = []
+    stack: list[Section] = []
+    lead: Section | None = None
+    for block in doc.blocks:
+        if block.kind == "heading":
+            level = max(block.level, 1)
+            section = Section(title=block, blocks=[], level=level, label=block.location().rstrip(":"))
+            while stack and stack[-1].level >= level:
+                stack.pop()
+            (stack[-1].children if stack else roots).append(section)
+            stack.append(section)
+        elif block.kind == "title":
+            continue
+        elif stack:
+            stack[-1].blocks.append(block)
+        else:
+            if lead is None:
+                lead = Section(title=None, blocks=[], level=0, label=block.location().rstrip(":"))
+                roots.insert(0, lead)
+            lead.blocks.append(block)
+    return roots
+
+
+def build_sections(doc: Document) -> list[Section]:
+    return _slide_sections(doc) if doc.format == "pptx" else _heading_sections(doc)
 
 
 def extract(path: str | Path) -> Document:
@@ -320,13 +445,57 @@ def extract_docx(path: Path) -> Document:
     return Document(path=str(path), format="docx", blocks=blocks)
 
 
+# A slide title, when the deck has no title placeholder: the largest type on the slide, if it is at
+# least this big and reads like words rather than a figure.
+_TITLE_MIN_PT = 20.0
+_TITLE_MAX_WORDS = 20
+
+
+def _para_size(para) -> float | None:
+    sizes = [r.font.size.pt for r in para.runs if r.text.strip() and r.font.size is not None]
+    return max(sizes) if sizes else None
+
+
+def _reads_like_words(text: str) -> bool:
+    """'$2.4B' and '118%' are display figures, not titles; a title has at least two real words."""
+    return sum(1 for w in re.findall(r"[A-Za-z]{2,}", text)) >= 2
+
+
+def _composed_title(slide) -> tuple[int, float] | None:
+    """(shape id, point size) of the paragraphs that title a slide built from plain text boxes.
+
+    Decks generated in code (a slide library drawing every element as a text box) have no title
+    placeholder, so without this every title reads as body copy: the heading rules never see one.
+    The title is the largest type on the slide that reads like a short line of words.
+    """
+    best = None
+    for shape in slide.shapes:
+        if not getattr(shape, "has_text_frame", False) or not shape.has_text_frame:
+            continue
+        for para in shape.text_frame.paragraphs:
+            text = "".join(r.text for r in para.runs).strip()
+            size = _para_size(para)
+            if (size is None or size < _TITLE_MIN_PT or not _reads_like_words(text)
+                    or word_count(text) > _TITLE_MAX_WORDS):
+                continue
+            if best is None or size > best[1]:
+                best = (shape.shape_id, size)
+    return best
+
+
 def extract_pptx(path: Path) -> Document:
     from pptx import Presentation
+    from pptx.enum.shapes import MSO_SHAPE_TYPE
 
     prs = Presentation(str(path))
     blocks: list[Block] = []
+    visuals: dict[int, int] = {}
     for s_no, slide in enumerate(prs.slides, 1):
+        visuals[s_no] = sum(1 for sh in slide.shapes if sh.shape_type == MSO_SHAPE_TYPE.PICTURE
+                            or getattr(sh, "has_chart", False))
         title_shape = slide.shapes.title
+        has_title = title_shape is not None and bool(title_shape.text_frame.text.strip())
+        composed = None if has_title else _composed_title(slide)
         for shape in slide.shapes:
             if getattr(shape, "has_table", False) and shape.has_table:
                 for r_idx, row in enumerate(shape.table.rows, 1):
@@ -345,7 +514,12 @@ def extract_pptx(path: Path) -> Document:
                 text = re.sub(r"\s+", " ", "".join(r.text for r in para.runs)).strip()
                 if not text:
                     continue
-                kind = "title" if is_title else ("list_item" if para.level > 0 else "paragraph")
+                composed_title = (composed is not None and shape.shape_id == composed[0]
+                                  and _para_size(para) == composed[1])
+                if is_title or composed_title:
+                    kind = "title"
+                else:
+                    kind = "list_item" if para.level > 0 else "paragraph"
                 runs = [r for r in para.runs if r.text.strip()]
                 bold_lead = bool(runs) and bool(runs[0].font.bold) and not all(bool(r.font.bold) for r in runs)
                 blocks.append(
@@ -364,4 +538,4 @@ def extract_pptx(path: Path) -> Document:
             if notes:
                 blocks.append(Block(text=notes, kind="notes", line=s_no, label=f"slide {s_no} notes",
                                     raw_lines=[(s_no, notes)]))
-    return Document(path=str(path), format="pptx", blocks=blocks)
+    return Document(path=str(path), format="pptx", blocks=blocks, visuals=visuals)

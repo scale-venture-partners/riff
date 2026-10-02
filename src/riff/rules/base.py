@@ -14,7 +14,15 @@ if TYPE_CHECKING:
     from riff.settings import Settings
 
 Kind = Literal["static", "jev"]
-Scope = Literal["block", "document"]
+# The level of the document a rule judges, smallest to largest. "block" is a paragraph, list item,
+# table cell or notes block -- the unit most rules read.
+Scope = Literal["sentence", "block", "title", "section", "document"]
+SCOPES: tuple[str, ...] = ("sentence", "block", "title", "section", "document")
+# What a document-scope rule is shown: the prose ("text"), the outline of titles alone ("outline"),
+# or each section's title with its opening line ("structure"). Narrative rules read the outline, the
+# way a reader skims a deck's titles.
+View = Literal["text", "outline", "structure"]
+VIEWS: tuple[str, ...] = ("text", "outline", "structure")
 Severity = Literal["error", "warning", "info"]
 
 Checker = Callable[[Document, "Settings"], "list[Finding]"]
@@ -45,6 +53,7 @@ class Rule:
     source: str
     kind: Kind
     scope: Scope = "block"
+    view: View = "text"
     explanation: str = ""
     examples: tuple[str, ...] = ()
     default: bool = True
@@ -52,6 +61,10 @@ class Rule:
     # Jev rules: Noul instructions sent per block. Phrased so a high probability means the tell IS present.
     question: Mapping[str, Any] | None = None
     threshold: float = 0.6
+    # Block rules whose question can be judged on a short fragment -- a slide's label or bullet -- not
+    # only on a paragraph: word choice, inflated stakes, boilerplate. Rules about discourse (a preamble,
+    # a quotable line, a tie-back) need sentences around them and are asked only of full paragraphs.
+    fragments: bool = False
     # Static rules: a checker over a Document and the active Settings.
     check: Checker | None = field(default=None, compare=False)
     # True for rules declared by a user in riff.toml, not shipped with riff.
@@ -84,6 +97,12 @@ REGISTRY: dict[str, Rule] = {}
 def register(rule: Rule) -> Rule:
     if rule.code in REGISTRY:
         raise ValueError(f"duplicate rule code {rule.code}")
+    if rule.scope not in SCOPES:
+        raise ValueError(f"rule {rule.code}: unknown scope {rule.scope!r} (use one of {', '.join(SCOPES)})")
+    if rule.view not in VIEWS:
+        raise ValueError(f"rule {rule.code}: unknown view {rule.view!r} (use one of {', '.join(VIEWS)})")
+    if rule.view != "text" and rule.scope != "document":
+        raise ValueError(f"rule {rule.code}: view {rule.view!r} is only for document-scope rules")
     REGISTRY[rule.code] = rule
     return rule
 
@@ -91,9 +110,16 @@ def register(rule: Rule) -> Rule:
 def register_custom_rules(specs: list[Mapping[str, Any]]) -> list[str]:
     """Register user-defined rules from riff.toml [[custom_rules]]. Idempotent per code.
 
-    Two kinds:
-      type = "jev"     -> a Noul question (needs an API key at run time), with optional scope/threshold.
-      type = "phrase"  -> literal phrases flagged offline, no key needed.
+    Three kinds:
+      type = "jev"     -> a Noul question (needs an API key at run time), with optional scope, view
+                          and threshold. Any scope: sentence, paragraph (block), title, section, document.
+      type = "phrase"  -> literal phrases flagged offline, no key needed. `case-sensitive = true` to
+                          tell "founders" from "Founders".
+      type = "regex"   -> a regular expression flagged offline, for what a phrase can't say: a
+                          punctuation mark, an emoji range, a capitalization pattern. Case-sensitive
+                          unless `ignore-case = true`.
+    Offline rules read prose (paragraphs, list items, table cells, notes) by default; `blocks = "all"`
+    adds titles and headings, where a deck carries much of its copy.
     A custom code must not collide with a built-in one.
     """
     added = []
@@ -113,28 +139,50 @@ def register_custom_rules(specs: list[Mapping[str, Any]]) -> list[str]:
         severity = str(spec.get("severity", "warning"))
         applies_to = tuple(str(t) for t in (spec.get("applies_to") or spec.get("applies-to") or ()))
         skip_for = tuple(str(t) for t in (spec.get("skip_for") or spec.get("skip-for") or ()))
+        blocks = str(spec.get("blocks", "prose")).lower()
+        if blocks not in ("prose", "all"):
+            raise ValueError(f"custom rule {code}: blocks must be 'prose' or 'all', not {blocks!r}")
+        kinds = None if blocks == "prose" else ALL_KINDS
         if kind == "phrase":
             phrases = spec.get("phrases") or []
             if not phrases:
                 raise ValueError(f"custom phrase rule {code} needs a non-empty 'phrases' list")
+            case_sensitive = bool(spec.get("case-sensitive", spec.get("case_sensitive", False)))
+            pattern = phrase_pattern([str(p) for p in phrases], case_sensitive=case_sensitive)
             rule = Rule(
                 code=code, name=name, summary=summary, category="Custom", source="custom (riff.toml)",
                 kind="static", severity=severity, custom=True, applies_to=applies_to, skip_for=skip_for,
-                check=phrase_check(code, phrase_pattern([str(p) for p in phrases]), summary + " ('{match}')"),
+                check=phrase_check(code, pattern, summary + " ('{match}')", kinds=kinds),
+            )
+        elif kind == "regex":
+            raw = spec.get("pattern")
+            if not raw:
+                raise ValueError(f"custom regex rule {code} needs a 'pattern'")
+            flags = re.IGNORECASE if spec.get("ignore-case", spec.get("ignore_case", False)) else 0
+            try:
+                pattern = re.compile(str(raw), flags)
+            except re.error as e:
+                raise ValueError(f"custom regex rule {code}: bad pattern: {e}") from e
+            rule = Rule(
+                code=code, name=name, summary=summary, category="Custom", source="custom (riff.toml)",
+                kind="static", severity=severity, custom=True, applies_to=applies_to, skip_for=skip_for,
+                check=phrase_check(code, pattern, summary + " ('{match}')", kinds=kinds),
             )
         elif kind == "jev":
             question = spec.get("question")
             if not question:
                 raise ValueError(f"custom jev rule {code} needs a 'question'")
             scope = str(spec.get("scope", "block"))
+            scope = "block" if scope == "paragraph" else scope
             rule = Rule(
                 code=code, name=name, summary=summary, category="Custom", source="custom (riff.toml)",
-                kind="jev", scope=scope, severity=severity, custom=True, applies_to=applies_to, skip_for=skip_for,
+                kind="jev", scope=scope, view=str(spec.get("view", "text")), severity=severity, custom=True,
+                applies_to=applies_to, skip_for=skip_for, fragments=bool(spec.get("fragments", False)),
                 question={"question": str(question)} if isinstance(question, str) else question,
                 threshold=float(spec.get("threshold", 0.6)),
             )
         else:
-            raise ValueError(f"custom rule {code}: unknown type {kind!r} (use 'jev' or 'phrase')")
+            raise ValueError(f"custom rule {code}: unknown type {kind!r} (use 'jev', 'phrase' or 'regex')")
         register(rule)
         added.append(code)
     return added
@@ -151,11 +199,13 @@ def jev_rule(
     explanation: str = "",
     examples: tuple[str, ...] = (),
     scope: Scope = "block",
+    view: View = "text",
     default: bool = True,
     severity: Severity = "warning",
     threshold: float = 0.6,
     applies_to: tuple[str, ...] = (),
     skip_for: tuple[str, ...] = (),
+    fragments: bool = False,
 ) -> Rule:
     return register(
         Rule(
@@ -166,6 +216,7 @@ def jev_rule(
             source=source,
             kind="jev",
             scope=scope,
+            view=view,
             explanation=explanation,
             examples=examples,
             default=default,
@@ -174,6 +225,7 @@ def jev_rule(
             threshold=threshold,
             applies_to=applies_to,
             skip_for=skip_for,
+            fragments=fragments,
         )
     )
 
@@ -274,13 +326,18 @@ def regex_matches(block: Block, pattern: re.Pattern[str]) -> Iterable[tuple[re.M
         yield m, line, col
 
 
-def phrase_pattern(phrases: Iterable[str]) -> re.Pattern[str]:
-    """Case-insensitive alternation; internal whitespace matches across wraps, apostrophes match either glyph."""
+# Every block kind an offline custom rule can be pointed at with blocks = "all".
+ALL_KINDS = frozenset({"paragraph", "list_item", "table_cell", "notes", "heading", "title"})
+
+
+def phrase_pattern(phrases: Iterable[str], *, case_sensitive: bool = False) -> re.Pattern[str]:
+    """An alternation of phrases; internal whitespace matches across wraps, apostrophes match either
+    glyph. Case-insensitive unless asked: a house rule like 'Founders, capitalized' needs the case."""
     alts = []
     for p in sorted(set(phrases), key=len, reverse=True):
         tokens = [re.escape(tok).replace("'", "['’]") for tok in p.split()]
         alts.append(r"\s+".join(tokens))
-    return re.compile(r"(?<![\w-])(?:" + "|".join(alts) + r")(?![\w-])", re.IGNORECASE)
+    return re.compile(r"(?<![\w-])(?:" + "|".join(alts) + r")(?![\w-])", 0 if case_sensitive else re.IGNORECASE)
 
 
 def phrase_check(code: str, pattern: re.Pattern[str], message: str, *, kinds: frozenset[str] | None = None,

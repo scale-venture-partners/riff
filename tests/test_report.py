@@ -78,3 +78,20 @@ def test_render_text_jev_stats_and_errors(monkeypatch):
     assert "Jev: 3 calls" in out
     assert "skipped" in out
     assert "WARNING" in out and "incomplete" in out
+
+
+def test_a_type_from_the_file_format_says_so(tmp_path):
+    import io
+
+    from pptx import Presentation
+
+    from riff.engine import lint_path
+    from riff.report import render_text
+    from riff.settings import Settings
+
+    prs = Presentation()
+    prs.slides.add_slide(prs.slide_layouts[5]).shapes.title.text = "A claim the slide argues"
+    prs.save(str(tmp_path / "d.pptx"))
+    buf = io.StringIO()
+    render_text([lint_path(str(tmp_path / "d.pptx"), Settings(jev=False))], stream=buf)
+    assert "type: presentation (from the file format)" in buf.getvalue()

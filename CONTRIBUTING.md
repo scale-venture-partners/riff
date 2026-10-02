@@ -52,6 +52,15 @@ deterministic modules.
 
 ## How rules work
 
+riff reads a document as a hierarchy -- document > sections > titles and blocks > sentences (see
+`extract.Section` and `Document.sections`) -- and every rule declares the level it judges with
+`scope`: `sentence`, `block` (a paragraph), `title`, `section`, or `document`. `jev.plan_units` turns
+the selected rules into one Jev call per unit at each level. A document-scope rule also picks a `view`
+(`text`, `outline`, or `structure`); a block rule that can be judged on a short fragment sets
+`fragments=True`. Choose the smallest level that has the evidence the question needs: a title's
+wording is a title question, whether the body delivers it is a section question, and whether the
+titles tell a story is a document question over the outline.
+
 Each rule is registered in `src/riff/rules/` and has a stable code:
 
 - **Jev rules** (`jev_rules.py`) are one `Noul` question asked about a paragraph,

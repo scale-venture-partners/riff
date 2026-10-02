@@ -112,6 +112,45 @@ def revision_badge(doc: Document, settings: Settings) -> list[Finding]:
     return out
 
 
+# A numbered part named where a reader keeps their place: a title, or the first words under it (a
+# deck's eyebrow, "STEP 6: HOOKS"). Ranges ("Steps 5-8") count from their first number.
+_PART_MARKER = re.compile(
+    r"\b(steps?|parts?|chapters?|phases?|stages?|modules?|lessons?|weeks?|days?)\s+(\d{1,3})\b"
+    r"(?:\s*(?:\u2013|\u2014|-|to|and|&)\s*(\d{1,3})\b)?",
+    re.IGNORECASE,
+)
+_MARKER_OPENING_WORDS = 8
+
+
+@static_rule("RIF005", "out-of-order-parts", "A numbered step or part comes after a later one",
+             category="Narrative", source="Minto, The Pyramid Principle", scope="section",
+             explanation="Steps, parts, phases and chapters are a promise about order. When section titles or the "
+             "line opening them (a deck's eyebrow) number their parts, a section that returns to an earlier "
+             "number after a later one -- step 5 after step 6 -- breaks the sequence a reader is following. "
+             "Comparing numbers is arithmetic, which the model does not do reliably, so it stays in code. A "
+             "deliberate recap will be flagged too; say so in its title.",
+             examples=("Slide 10 'Step 6: hooks', then slide 16 'Steps 5-6: check and gate'",))
+def out_of_order_parts(doc: Document, settings: Settings) -> list[Finding]:
+    out = []
+    furthest: dict[str, tuple[int, str]] = {}  # kind -> (highest number so far, where)
+    for section in doc.walk_sections():
+        if section.title is None:
+            continue
+        opening = " ".join(section.body_text.split()[:_MARKER_OPENING_WORDS])
+        m = _PART_MARKER.search(f"{section.title.text} {opening}")
+        if m is None:
+            continue
+        kind, number = m.group(1).lower().rstrip("s"), int(m.group(2))
+        seen = furthest.get(kind)
+        if seen is not None and number < seen[0]:
+            out.append(finding("RIF005", doc, section.title,
+                               f"{m.group(0)} comes after {kind} {seen[0]} ({seen[1]})",
+                               snippet=snippet_of(section.title.text)))
+        if seen is None or number > seen[0]:
+            furthest[kind] = (number, section.label)
+    return out
+
+
 # ---------------------------------------------------------------- clarity metrics (CLR0xx)
 
 

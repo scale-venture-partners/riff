@@ -26,6 +26,8 @@ def _doc_type_line(result: LintResult, color: bool) -> str:
     dt = result.doc_type
     if dt.source == "forced":
         body = f"type: {dt.type} (forced)"
+    elif dt.source == "format":
+        body = f"type: {dt.type} (from the file format)"
     elif dt.source == "classified" and dt.type:
         body = f"type: {dt.type} ({dt.confidence:.2f})"
     else:
