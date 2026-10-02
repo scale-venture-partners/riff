@@ -11,7 +11,8 @@ things Jev cannot do stay in code (see static_rules.py): exact glyphs it never s
 duplicate detection, and arithmetic metrics.
 
 Codes: JEV0xx structure/composition, JEV1xx tone/voice, JEV2xx substance, JEV3xx word & phrase
-choice, JEV4xx clarity & grammar (Williams).
+choice, JEV4xx clarity & grammar (Williams), JEV6xx type-specific, JEV7xx narrative -- rules that
+judge a title, a whole section, or the document's outline rather than one paragraph.
 """
 
 from __future__ import annotations
@@ -26,7 +27,7 @@ E = "Strunk & White, The Elements of Style"
 
 jev_rule(
     "JEV001", "preamble", "Announces what it is about to say instead of saying it",
-    category="Composition", source=T, threshold=0.65, skip_for=("documentation",),
+    category="Composition", source=T, threshold=0.65, skip_for=("documentation", "presentation"),
     explanation="Opening that sets up the answer instead of being the answer (\"Two constraints shape the design\").",
     examples=("Two constraints shape the design.", "Before diving in, let me set up what follows."),
     question={
@@ -128,7 +129,7 @@ jev_rule(
 
 jev_rule(
     "JEV010", "formulaic-structure", "Follows a formulaic template, hitting every expected beat in order",
-    category="Composition", source=T, threshold=0.65, scope="document",
+    category="Composition", source=T, threshold=0.65, scope="document", skip_for=("presentation",),
     explanation="Whole-message tell: an AI-generated piece that marches through the canonical beats of its genre "
     "(for outreach: intro, a flattering observation, a thesis, boilerplate about the sender, a soft ask) in order. "
     "Asked once over the whole document, since the tell is the overall shape, not any one paragraph.",
@@ -263,7 +264,7 @@ jev_rule(
 
 jev_rule(
     "JEV111", "formulaic-close", "A canned, low-pressure sign-off",
-    category="Tone", source=T, threshold=0.68,
+    category="Tone", source=T, threshold=0.68, skip_for=("presentation",),
     explanation="The interchangeable outreach closer: 'no agenda', 'no pressure', 'happy to hop on a call', "
     "'whatever works for you', 'let me know if that works'.",
     examples=("No agenda beyond getting acquainted.", "Happy to do a call too if that's easier."),
@@ -275,7 +276,7 @@ jev_rule(
 
 jev_rule(
     "JEV112", "misplaced-greeting", "A personal greeting or sign-off where the format doesn't call for one",
-    category="Composition", source=T, threshold=0.7, scope="document", skip_for=("email", "letter"),
+    category="Composition", source=T, threshold=0.7, scope="document", skip_for=("email", "letter", "presentation"),
     explanation="A greeting ('Hi Sam,') or sign-off ('Thanks, — Alex') is expected in an email or letter, "
     "but out of place in a memo, report, essay, SMS, or documentation. This rule skips email and letter; "
     "for any other type (or an unresolved one) it flags the greeting.",
@@ -726,3 +727,104 @@ jev_rule(
         "otherwise lack a strong action verb and a concrete or quantified result?",
     },
 )
+
+
+# ---------------------------------------------------------------- narrative (JEV7xx)
+#
+# These judge a level above the paragraph: a title, a section with its title and body, or the
+# document's outline -- its titles read in order, the way a reader skims a deck or a report's headings
+# to follow the argument. See extract.Section and jev.plan_units for what each level is shown.
+
+AE = "Alley, The Craft of Scientific Presentations (assertion-evidence)"
+MINTO = "Minto, The Pyramid Principle"
+
+jev_rule(
+    "JEV701", "label-title", "A slide title that names a topic instead of stating the slide's point",
+    category="Narrative", source=AE, threshold=0.75, scope="title", applies_to=("presentation",),
+    explanation="A slide title should be the claim the slide supports ('Efficiency is now the scarce input'), "
+    "not a topic label ('Efficiency overview'). A reader who reads only the titles should get the argument. "
+    "Cover, agenda, divider and closing titles are exempt. Source: Alley, The Craft of Scientific Presentations.",
+    examples=("Market Overview", "Q3 Results", "Our Team"),
+    question={
+        "question": "Is this slide title a topic label -- it names a subject, like 'Market overview' or 'Q3 "
+        "results' -- rather than a claim or finding the slide argues for, which a reader could agree or disagree "
+        "with?",
+        "not_for": "A title that states a finding, recommendation, or a number with its meaning; and the title "
+        "of a cover, agenda, section divider, or closing slide -- the first or last slide, or one with few "
+        "words under it that opens a part of the deck -- such as 'What we'll cover', 'The evidence', or "
+        "'Thank you'.",
+    },
+)
+
+jev_rule(
+    "JEV702", "title-not-delivered", "A section or slide whose body doesn't support what its title says",
+    category="Narrative", source=MINTO, threshold=0.85, scope="section",
+    applies_to=("presentation", "report", "memo", "essay", "article", "blog_post"),
+    explanation="Each section's body should prove the point its title makes. A body that argues something "
+    "else, covers only part of the title, or contradicts it leaves the reader holding a claim nobody "
+    "supported. Source: Minto, The Pyramid Principle.",
+    examples=("Title 'Churn fell after the pricing change' over a body about hiring.",),
+    question={
+        "question": "Does the body of this section or slide fail to support or deliver what its title says -- it "
+        "argues something else, covers only part of the title's claim, or contradicts it?",
+        "not_for": "A body that supports its title, even briefly; a cover, agenda, divider, quote, or closing "
+        "slide whose title is not a claim the body argues; and a section with charts_or_images, whose support "
+        "is a picture you cannot see -- its caption or source line is not the evidence.",
+    },
+)
+
+jev_rule(
+    "JEV703", "two-points-one-slide", "A slide that makes more than one main point",
+    category="Narrative", source=AE, threshold=0.8, scope="section", applies_to=("presentation",), default=False,
+    explanation="One slide, one point: a slide that needs two titles to say what it shows is two slides. Off by "
+    "default; the call is a judgment. Source: Alley, The Craft of Scientific Presentations.",
+    question={
+        "question": "Does this slide try to make more than one main point, so that it would need two separate "
+        "titles to say what it shows?",
+        "not_for": "A slide whose items all support one point, such as several numbers behind one claim.",
+    },
+)
+
+jev_rule(
+    "JEV711", "ghost-deck", "The titles, read in order, don't tell the argument on their own",
+    category="Narrative", source=MINTO + "; the consultant's 'ghost deck' test", threshold=0.75,
+    scope="document", view="outline", applies_to=("presentation",),
+    explanation="Read only the slide titles in order. They should tell the deck's argument: a sequence of "
+    "claims that builds to a conclusion. Topic labels, jumps between unrelated points, or no stated "
+    "conclusion mean the story lives in the speaker's head, not on the slides. Judged from the outline alone. "
+    "Source: Minto, The Pyramid Principle; the 'ghost deck' practice of drafting a deck as its titles first.",
+    examples=("Market Context / Portfolio Performance / Portfolio at a Glance / Looking Ahead",),
+    question={
+        "question": "Read only these titles, in order, as a reader skimming the deck would. Do they fail to tell "
+        "the deck's argument on their own -- because most are topic labels, they jump between unrelated points, "
+        "or nothing in them states a conclusion or recommendation?",
+        "not_for": "An outline whose titles, read alone, state a sequence of claims that build to a conclusion "
+        "or an ask. Cover, agenda, divider and closing titles are expected and do not count against it.",
+    },
+)
+
+
+# ---------------------------------------------------------------- rules that read fragments
+#
+# Asked of every block at or above the word floor, including the short labels and bullets that make
+# up most of a deck. Each is about word choice or a claim's register, which a fragment shows as well
+# as a paragraph does. Every other block rule needs a full paragraph (see jev.DISCOURSE_MIN_WORDS):
+# on slide fragments, discourse rules mistake an agenda line for a preamble and a card header for a
+# quotable line.
+
+_FRAGMENT_RULES = ("JEV101", "JEV102", "JEV104", "JEV110", "JEV204", "JEV301", "JEV302", "JEV303", "JEV304",
+                   "JEV306", "JEV403", "JEV502", "JEV503")
+# Not JEV207 (boilerplate): a label is generic by nature -- "Security for machine identity" -- and the
+# rule needs a claim to judge.
+
+
+def _mark_fragment_rules() -> None:
+    from dataclasses import replace
+
+    from riff.rules.base import REGISTRY
+
+    for code in _FRAGMENT_RULES:
+        REGISTRY[code] = replace(REGISTRY[code], fragments=True)
+
+
+_mark_fragment_rules()

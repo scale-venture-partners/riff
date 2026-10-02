@@ -46,6 +46,10 @@ def build_parser() -> argparse.ArgumentParser:
                    help="do not classify the document type (type-specific rules then run everywhere)")
     p.add_argument("--model", help="Jev model id (default from config, else jev-latest)")
     p.add_argument("--max-sentence-words", type=int, help="word limit for CLR001 (default 45)")
+    p.add_argument("--jev-min-words", type=int, metavar="N",
+                   help="shortest paragraph or sentence sent to Jev (default 8; 4 for .pptx)")
+    p.add_argument("--outline", action="store_true",
+                   help="print each file's structure as riff reads it -- sections, titles, blocks -- and exit")
     p.add_argument("--format", choices=("text", "json"), default="text", help="output format")
     p.add_argument("--config", type=Path, help="path to a riff.toml or pyproject.toml")
     p.add_argument("--debug-jev", action="store_true",
@@ -71,6 +75,10 @@ def _apply_overrides(settings: Settings, args: argparse.Namespace) -> Settings:
         settings.model = args.model
     if args.max_sentence_words is not None:
         settings.max_sentence_words = args.max_sentence_words
+    if args.jev_min_words is not None:
+        if args.jev_min_words < 1:
+            raise ValueError(f"--jev-min-words must be at least 1, not {args.jev_min_words}")
+        settings.jev_min_words = args.jev_min_words
     if args.no_classify:
         settings.classify = False
     if args.doc_type:
@@ -89,8 +97,10 @@ def cmd_list_rules(stream=None) -> int:
         for rule in by_prefix[prefix]:
             kind = "jev " if rule.kind == "jev" else "    "
             star = " " if rule.default else "·"
-            print(f"  {star}{rule.code}  {kind} {rule.name:<26} {rule.summary}", file=stream)
+            print(f"  {star}{rule.code}  {kind} {rule.scope:<8} {rule.name:<26} {rule.summary}", file=stream)
     print("\n· = off by default (enable with --select or --extend-select). jev = needs TYPESAFE_API_KEY.", file=stream)
+    print("Scope is the level a rule judges: sentence, block (a paragraph), title, section, or document.",
+          file=stream)
     return 0
 
 
@@ -103,7 +113,12 @@ def cmd_explain(code: str, stream=None) -> int:
         return 2
     print(f"{rule.code}  {rule.name}  [{rule.kind}, {rule.category}]", file=stream)
     print(f"source: {rule.source}", file=stream)
-    print(f"default: {'on' if rule.default else 'off'}   severity: {rule.severity}", file=stream)
+    print(f"default: {'on' if rule.default else 'off'}   severity: {rule.severity}   scope: {rule.scope}"
+          + (f" ({rule.view} view)" if rule.view != "text" else ""), file=stream)
+    if rule.applies_to:
+        print(f"applies to: {', '.join(rule.applies_to)}", file=stream)
+    if rule.skip_for:
+        print(f"skipped for: {', '.join(rule.skip_for)}", file=stream)
     if rule.kind == "jev":
         print(f"threshold: {rule.threshold}", file=stream)
     print(f"\n{rule.summary}", file=stream)
@@ -118,6 +133,29 @@ def cmd_explain(code: str, stream=None) -> int:
         for k, v in rule.question.items():
             print(f"  {k}: {v}", file=stream)
     return 0
+
+
+def cmd_outline(paths: list[str], stream=None) -> int:
+    """The hierarchy riff reads, per file: what section- and document-scope rules will see."""
+    from riff.extract import extract
+
+    stream = stream or sys.stdout
+    code = 0
+    for path in paths:
+        try:
+            doc = extract(path)
+        except Exception as exc:  # noqa: BLE001 - name the file and keep going
+            print(f"{path}: {type(exc).__name__}: {exc}", file=sys.stderr)
+            code = 2
+            continue
+        print(f"{doc.path} ({doc.format}: {len(doc.blocks)} blocks, {len(list(doc.walk_sections()))} sections)",
+              file=stream)
+        for section in doc.walk_sections():
+            indent = "  " * max(section.level, 1)
+            title = section.title.text if section.title else "(untitled)"
+            print(f"{indent}{section.label}: {title}  [{len(section.blocks)} blocks, "
+                  f"{len(section.body_text.split())} words]", file=stream)
+    return code
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -140,6 +178,11 @@ def main(argv: list[str] | None = None) -> int:
     paths = list(args.paths) + list(args.file)
     if not paths:
         print("no files given. Usage: riff FILE [FILE ...]  (see --help, --list-rules)", file=sys.stderr)
+        return 2
+    if args.outline:
+        return cmd_outline(paths)
+    if args.jev_min_words is not None and args.jev_min_words < 1:
+        print(f"--jev-min-words must be at least 1, not {args.jev_min_words}", file=sys.stderr)
         return 2
 
     # Config is resolved from each file's own directory upward (ruff semantics), cached per config root,

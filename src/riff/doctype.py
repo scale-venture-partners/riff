@@ -40,6 +40,7 @@ DOC_TYPES: dict[str, object] = {
     "script": "A script or screenplay with dialogue and stage or scene directions.",
     "poem": "A poem or verse.",
     "notes": "Rough notes, an outline, or a bulleted list rather than finished prose.",
+    "presentation": "A slide deck: short titles, labels and bullets on slides, often with a cover and a closing slide.",
     "other": "None of the above kinds fit.",
 }
 
@@ -50,7 +51,7 @@ TYPE_NAMES: tuple[str, ...] = tuple(DOC_TYPES)
 class DocTypeResult:
     type: str | None            # None means unresolved (no classification and no forced type)
     confidence: float | None
-    source: str                 # "forced", "classified", or "unresolved"
+    source: str                 # "forced", "format", "classified", or "unresolved"
 
 
 UNRESOLVED = DocTypeResult(type=None, confidence=None, source="unresolved")
@@ -58,6 +59,17 @@ UNRESOLVED = DocTypeResult(type=None, confidence=None, source="unresolved")
 
 def forced(type_name: str) -> DocTypeResult:
     return DocTypeResult(type=type_name, confidence=None, source="forced")
+
+
+# Formats whose kind of writing the file itself settles. A .pptx is a deck whatever its words say;
+# asking a model to classify a deck's text has called LP updates "report" and "letter", and the
+# letter's greeting rules then fired on the cover's presenter-and-date line.
+FORMAT_TYPES = {"pptx": "presentation"}
+
+
+def from_format(fmt: str) -> DocTypeResult | None:
+    name = FORMAT_TYPES.get(fmt)
+    return DocTypeResult(type=name, confidence=None, source="format") if name else None
 
 
 def is_valid_type(name: str) -> bool:

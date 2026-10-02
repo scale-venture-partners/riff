@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass, field
 
-from riff.doctype import UNRESOLVED, DocTypeResult, classify_document, forced
+from riff.doctype import UNRESOLVED, DocTypeResult, classify_document, forced, from_format
 from riff.extract import Document, extract
 from riff.rules import load_rules
 from riff.rules.base import REGISTRY, Finding, rule_applies
@@ -26,6 +26,9 @@ class LintResult:
 def _resolve_doc_type(doc: Document, settings: Settings) -> DocTypeResult:
     if settings.forced_type:
         return forced(settings.forced_type)
+    by_format = from_format(doc.format)
+    if by_format is not None:
+        return by_format
     if settings.jev and settings.classify and doc.word_count > 0:
         return asyncio.run(classify_document(doc.text, doc.word_count, model=settings.model))
     return UNRESOLVED

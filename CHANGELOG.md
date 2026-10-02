@@ -7,6 +7,34 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- **Documents are read as a hierarchy**: document > sections > titles and blocks > sentences.
+  Markdown, HTML and Word headings nest into sections; a deck's slides are its sections, with the
+  slide title as the section title and speaker notes inside it. Every rule declares the level it
+  judges (`scope`: `sentence`, `block`, `title`, `section`, `document`), and Jev makes one call per
+  unit at that level. Document-scope rules choose a `view`: the prose, the outline of titles, or each
+  section's title with its opening line. `riff --outline FILE` prints the hierarchy as riff reads it.
+- Narrative rules on the new levels: `JEV701` label-title (a slide title naming a topic instead of
+  a claim), `JEV702` title-not-delivered (a section's body doesn't support its title), `JEV711`
+  ghost-deck (a deck's titles, read alone, don't tell its argument), `JEV703` two-points-one-slide
+  (opt-in), and `RIF005` out-of-order-parts, a static check for a numbered step or part that comes
+  after a later one -- comparing numbers is arithmetic, so it stays in code.
+- A `presentation` document type. A `.pptx` gets it from its format, with no classification call;
+  `JEV001`, `JEV010`, `JEV111` and `JEV112` skip it, since an agenda, a cover's presenter-and-date
+  line and a "Thank you" close are deck conventions, not tells.
+- `jev-min-words` / `--jev-min-words`: the shortest paragraph or sentence sent to Jev. Defaults to 8,
+  and 4 for `.pptx`, where three quarters of the text blocks are under eight words. Blocks under eight
+  words are asked only the rules marked `fragments` (word choice, inflated stakes, vague
+  abstraction); discourse rules need full paragraphs.
+- Slide titles in decks built from text boxes (no title placeholder): the largest type on a slide, at
+  least 20pt and two words, and not a display figure, is its title.
+- Custom rules: `type = "regex"` (case-sensitive unless `ignore-case = true`), `case-sensitive` phrase
+  rules, `blocks = "all"` to include titles and headings, and Jev custom rules at any `scope`, with
+  `view` and `fragments`.
+
+### Changed
+- `JEV001`, `JEV010`, `JEV111` and `JEV112` skip the new `presentation` type.
+- `--list-rules` and the README rule table show each rule's level; `--explain` shows its level, view,
+  and type gating.
 - Lint a web page by URL: `riff https://…` fetches the page and lints only its article body (largest
   `<article>`, else `<main>`, else `<body>`, minus nav/header/footer/sidebar chrome). Findings are
   labelled `block N`. HTML only; no new dependencies.

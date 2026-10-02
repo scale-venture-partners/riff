@@ -28,6 +28,9 @@ class Settings:
     max_reading_grade: float = 14.0
     thresholds: dict[str, float] = field(default_factory=dict)
     jev_concurrency: int = 8
+    # Paragraph and sentence units shorter than this are not sent to Jev. None: the format's default
+    # (8 words; 4 for .pptx, whose copy is mostly short).
+    jev_min_words: int | None = None
     classify: bool = True
     forced_type: str | None = None
     source: str = "defaults"
@@ -73,6 +76,15 @@ def _as_tuple(value: object) -> tuple[str, ...]:
     return tuple(str(v) for v in value)
 
 
+def _optional_int(value) -> int | None:
+    if value is None:
+        return None
+    n = int(value)
+    if n < 1:
+        raise ValueError(f"jev-min-words must be at least 1, not {n}")
+    return n
+
+
 def find_config(start: Path) -> Path | None:
     start = start.resolve()
     for directory in (start, *start.parents):
@@ -113,6 +125,7 @@ def load_settings(explicit: Path | None = None, start: Path | None = None) -> Se
         max_reading_grade=float(table.get("max-reading-grade", table.get("max_reading_grade", 14.0))),
         thresholds=thresholds,
         jev_concurrency=int(table.get("jev-concurrency", table.get("jev_concurrency", 8))),
+        jev_min_words=_optional_int(table.get("jev-min-words", table.get("jev_min_words"))),
         classify=bool(table.get("classify", True)),
         forced_type=(str(table["type"]) if table.get("type") else None),
         source=str(path),

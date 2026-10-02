@@ -63,7 +63,7 @@ def test_doc_type_result_sources():
 
 def test_greeting_rule_is_type_gated():
     g = REGISTRY["JEV112"]
-    assert g.skip_for == ("email", "letter")
+    assert g.skip_for == ("email", "letter", "presentation"), "a deck cover's presenter line is not a greeting"
     assert g.scope == "document"
     assert rule_applies(g, "email") is False
     assert rule_applies(g, "memo") is True

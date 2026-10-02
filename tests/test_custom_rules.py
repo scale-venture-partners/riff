@@ -115,3 +115,63 @@ def test_custom_rule_type_gating_fields():
     r = REGISTRY["TST400"]
     assert r.applies_to == ("memo", "report")
     assert r.skip_for == ("email",)
+
+
+# -- regex rules, case-sensitive phrases, and titles ------------------------------------------------
+
+def _lint(md, *codes):
+    return [f for f in lint_document(extract_markdown(md), Settings(jev=False, select=codes)).findings]
+
+
+def test_regex_rule_flags_what_a_phrase_cannot():
+    register_custom_rules([{"code": "TSTR00", "type": "regex", "summary": "Exclamation mark", "pattern": "!"}])
+    (f,) = _lint("We shipped it! On time.", "TSTR00")
+    assert f.message == "Exclamation mark ('!')"
+
+
+def test_regex_rules_are_case_sensitive_unless_told():
+    register_custom_rules([
+        {"code": "TSTR01", "type": "regex", "summary": "Lowercase founders", "pattern": r"\bfounders?\b"},
+        {"code": "TSTR02", "type": "regex", "summary": "Any founders", "pattern": r"\bfounders?\b", "ignore-case": True},
+    ])
+    text = "Founders build. Most founders ship."
+    assert len(_lint(text, "TSTR01")) == 1 and len(_lint(text, "TSTR02")) == 2
+
+
+def test_phrase_rules_can_be_case_sensitive():
+    register_custom_rules([{"code": "TSTR03", "type": "phrase", "summary": "Write Founders", "phrases": ["founders"],
+                            "case-sensitive": True}])
+    assert [f.message for f in _lint("Founders and founders.", "TSTR03")] == ["Write Founders ('founders')"]
+
+
+def test_offline_rules_read_titles_only_when_asked():
+    register_custom_rules([
+        {"code": "TSTR04", "type": "regex", "summary": "Bang", "pattern": "!"},
+        {"code": "TSTR05", "type": "regex", "summary": "Bang anywhere", "pattern": "!", "blocks": "all"},
+    ])
+    md = "# Big news!\n\nA calm paragraph."
+    assert _lint(md, "TSTR04") == [] and len(_lint(md, "TSTR05")) == 1
+
+
+def test_bad_regex_rules_are_config_errors():
+    with pytest.raises(ValueError, match="needs a 'pattern'"):
+        register_custom_rules([{"code": "TSTR06", "type": "regex"}])
+    with pytest.raises(ValueError, match="bad pattern"):
+        register_custom_rules([{"code": "TSTR07", "type": "regex", "pattern": "("}])
+    with pytest.raises(ValueError, match="blocks must be"):
+        register_custom_rules([{"code": "TSTR08", "type": "regex", "pattern": "x", "blocks": "titles"}])
+    with pytest.raises(ValueError, match="'jev', 'phrase' or 'regex'"):
+        register_custom_rules([{"code": "TSTR09", "type": "glob"}])
+
+
+def test_jev_custom_rules_take_any_level_and_a_view():
+    register_custom_rules([
+        {"code": "TSTR10", "type": "jev", "question": "q?", "scope": "paragraph", "fragments": True},
+        {"code": "TSTR11", "type": "jev", "question": "q?", "scope": "document", "view": "outline"},
+        {"code": "TSTR12", "type": "jev", "question": "q?", "scope": "title"},
+    ])
+    assert (REGISTRY["TSTR10"].scope, REGISTRY["TSTR10"].fragments) == ("block", True)
+    assert (REGISTRY["TSTR11"].scope, REGISTRY["TSTR11"].view) == ("document", "outline")
+    assert REGISTRY["TSTR12"].scope == "title"
+    with pytest.raises(ValueError, match="unknown scope"):
+        register_custom_rules([{"code": "TSTR13", "type": "jev", "question": "q?", "scope": "chapter"}])
