@@ -24,6 +24,7 @@ PREAMBLE = "Before diving in, let me set up what follows and explain the shape o
 class _Server(HTTPServer):
     requests: list[dict]
     failures: list[int]  # statuses to return, in order, before answering normally
+    overflow: bool  # answer 400 with Ollama's context-overflow wording
     hot: set[str]  # noul question names answered with a high probability
 
 
@@ -35,6 +36,13 @@ def _handler(server: _Server):
         def do_POST(self):
             body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
             server.requests.append(body)
+            if server.overflow:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps(
+                    {"error": "prompt 0 has 2868 tokens; expected 1\u20132050 (input is never truncated)"}).encode())
+                return
             if server.failures:
                 self.send_response(server.failures.pop(0))
                 self.send_header("Content-Type", "application/json")
@@ -64,7 +72,7 @@ def _handler(server: _Server):
 def server(monkeypatch):
     srv = _Server(("127.0.0.1", 0), BaseHTTPRequestHandler)
     srv.RequestHandlerClass = _handler(srv)
-    srv.requests, srv.failures, srv.hot = [], [], {"JEV001"}
+    srv.requests, srv.failures, srv.hot, srv.overflow = [], [], {"JEV001"}, False
     thread = threading.Thread(target=srv.serve_forever, daemon=True)
     thread.start()
     monkeypatch.setenv("SYSTEM_ONE_BASE_URL", f"http://127.0.0.1:{srv.server_port}")
@@ -145,3 +153,30 @@ async def test_classify_document_unresolved_without_backend(monkeypatch):
     monkeypatch.delenv("SYSTEM_ONE_BASE_URL", raising=False)
     result = await classify_document("Some text.", 2, model="system-one:fake")
     assert result.source == "unresolved"
+
+
+async def test_context_overflow_warns_without_failing(server):
+    server.overflow = True
+    doc = extract_markdown(PREAMBLE)
+    findings, stats = await run_jev(doc, ["JEV001"], Settings(model="system-one:fake"))
+    assert findings == []
+    assert stats["context_exceeded"] == 1 and stats["errors"] == 0
+    assert stats["context_tokens"] == 2868 and stats["context_limit"] == 2050
+    assert len(server.requests) == 1  # not retried
+
+
+def test_report_warns_on_context_overflow(monkeypatch):
+    import io
+
+    from riff.engine import LintResult
+    from riff.report import render_text
+
+    monkeypatch.setenv("NO_COLOR", "1")
+    stats = {"calls": 0, "input_tokens": 0, "model": "tev1:4b", "system": "system-one",
+             "context_exceeded": 4, "context_tokens": 4962, "context_limit": 2050}
+    res = LintResult(document=extract_markdown("Body paragraph here for context."), findings=[], jev_stats=stats)
+    buf = io.StringIO()
+    render_text([res], stream=buf)
+    out = buf.getvalue()
+    assert "tev1:4b's context (2,050 tokens) is too small for 4 request(s)" in out
+    assert "largest 4,962 tokens" in out and "incomplete" not in out

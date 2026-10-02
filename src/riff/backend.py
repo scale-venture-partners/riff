@@ -9,6 +9,7 @@ optionally SYSTEM_ONE_API_KEY), such as Laya, Ollama's decision models, or OpenR
 from __future__ import annotations
 
 import asyncio
+import re
 
 from pydantic_ai.exceptions import ModelAPIError, ModelHTTPError, UnexpectedModelBehavior, UserError
 from pydantic_ai.models import infer_model
@@ -25,8 +26,21 @@ REQUEST_TIMEOUT = 60.0
 _MAX_RETRIES = 3
 _RETRYABLE_STATUS = {408, 409, 429}
 
+# Ollama's wording when a prompt exceeds the model's context window.
+_CONTEXT_OVERFLOW = re.compile(r"prompt \d+ has (\d+) tokens; expected 1[\u2013-](\d+)")
+
+
+class ContextExceeded(Exception):
+    """The request's prompt is longer than the model's context window, so the request did not run."""
+
+    def __init__(self, tokens: int, limit: int):
+        super().__init__(f"prompt has {tokens} tokens; the model's context is {limit}")
+        self.tokens = tokens
+        self.limit = limit
+
+
 # Errors a single decision can raise; callers count them rather than abort the lint.
-DecisionError = (ModelAPIError, UnexpectedModelBehavior)
+DecisionError = (ModelAPIError, UnexpectedModelBehavior, ContextExceeded)
 
 
 class BackendUnavailable(RuntimeError):
@@ -72,6 +86,9 @@ async def decide(model: DecisionModel, state: object, questions: dict[str, Decis
         try:
             return await model.decide(request, settings)
         except ModelAPIError as exc:
+            if isinstance(exc, ModelHTTPError) and exc.status_code == 400:
+                if match := _CONTEXT_OVERFLOW.search(str(exc.body)):
+                    raise ContextExceeded(int(match[1]), int(match[2])) from exc
             if attempt == _MAX_RETRIES or not _retryable(exc):
                 raise
             await asyncio.sleep(2**attempt * 0.5)

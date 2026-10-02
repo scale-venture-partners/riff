@@ -134,7 +134,9 @@ riff draft.md --model system-one:laya          # Laya, CLM, an Ollama decision m
 
 Set `SYSTEM_ONE_API_KEY` too if the server needs one. **Thresholds are tuned to Jev.** Another
 model's probabilities sit on a different scale, so check its findings with `--debug-jev` and set
-`[thresholds]` for it before trusting the output.
+`[thresholds]` for it before trusting the output. Small-context models (Ollama's `tev1` reads about
+2,000 tokens) cannot hold riff's full rule set; riff warns when a prompt overflows, and `--select`
+asks fewer rules per run.
 
 Each Jev rule is one yes/no (Noul) question asked about one part of the document: a paragraph for
 most rules, or a sentence, a title, a section, or the whole document (see below). It is phrased so a

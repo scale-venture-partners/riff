@@ -21,7 +21,9 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `system-one:<name>` for any server speaking `POST /v1/systemone` (set `SYSTEM_ONE_BASE_URL`).
   A language model is rejected: riff needs calibrated probabilities. Thresholds remain tuned to
   Jev. Transient failures (429, 5xx, transport errors) are retried three times, then counted.
-  The cost estimate shows only for Jev.
+  The cost estimate shows only for Jev. When a prompt exceeds a model's context window (Ollama's
+  wording), riff warns with the model's limit and the largest prompt instead of failing: those
+  rules did not run and the results are weaker, which is expected of small-context models.
   `JevUnavailable` is now an alias of `riff.backend.BackendUnavailable`.
 
 ### Added

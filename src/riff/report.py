@@ -104,6 +104,14 @@ def _jev_note(results: list[LintResult], stream, color: bool) -> None:
     if skipped:
         note += f", {skipped} block(s) skipped as too long"
     print(f"{_DIM if color else ''}{note}{_RESET if color else ''}", file=stream)
+    over = sum(s.get("context_exceeded", 0) for s in stats)
+    if over:
+        limit = max(s.get("context_limit", 0) for s in stats)
+        biggest = max(s.get("context_tokens", 0) for s in stats)
+        warn = (f"WARNING: {label}'s context ({limit:,} tokens) is too small for {over} request(s) "
+                f"(largest {biggest:,} tokens), so those rules did not run and results are weaker. "
+                "Ask fewer rules with --select, or use a model with a larger context.")
+        print(f"{_COLOR['error'] if color else ''}{warn}{_RESET if color else ''}", file=stream)
     if errors:
         warn = f"WARNING: {errors} Jev request(s) failed; this lint is incomplete."
         print(f"{_COLOR['error'] if color else ''}{warn}{_RESET if color else ''}", file=stream)

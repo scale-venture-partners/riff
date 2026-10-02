@@ -20,7 +20,7 @@ from dataclasses import dataclass
 
 from pydantic_ai.models.decision import NoulQuestion
 
-from riff.backend import BackendUnavailable, DecisionError, decide, resolve_model
+from riff.backend import BackendUnavailable, ContextExceeded, DecisionError, decide, resolve_model
 from riff.extract import Block, Document, Section
 from riff.rules.base import REGISTRY, Finding, Rule, snippet_of
 from riff.settings import Settings
@@ -210,7 +210,8 @@ async def run_jev(doc: Document, codes: list[str], settings: Settings, *, debug:
     for u in units:
         per_scope[u.scope] = per_scope.get(u.scope, 0) + 1
     stats = {"blocks": per_scope.get("block", 0), "units": per_scope, "min_words": min_words(doc, settings),
-             "calls": 0, "input_tokens": 0, "skipped": 0, "errors": 0, "error_detail": [], "probabilities": [],
+             "calls": 0, "input_tokens": 0, "skipped": 0, "errors": 0, "error_detail": [],
+             "context_exceeded": 0, "context_tokens": 0, "context_limit": 0, "probabilities": [],
              "model": model.model_name, "system": model.system}
     findings: list[Finding] = []
     sem = asyncio.Semaphore(settings.jev_concurrency)
@@ -226,6 +227,11 @@ async def run_jev(doc: Document, codes: list[str], settings: Settings, *, debug:
         async with sem:
             try:
                 resp = await decide(model, unit.state, questions[key])
+            except ContextExceeded as exc:
+                stats["context_exceeded"] += 1
+                stats["context_tokens"] = max(stats["context_tokens"], exc.tokens)
+                stats["context_limit"] = exc.limit
+                return []
             except DecisionError as exc:
                 stats["errors"] += 1
                 stats["error_detail"].append(f"{unit.scope} {unit.anchor.location()} {type(exc).__name__}: {exc}")
