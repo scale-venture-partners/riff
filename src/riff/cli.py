@@ -44,7 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
                    help="force the document type (e.g. email, memo, sms); skips classification, works with --no-jev")
     p.add_argument("--no-classify", action="store_true",
                    help="do not classify the document type (type-specific rules then run everywhere)")
-    p.add_argument("--model", help="Jev model id (default from config, else jev-latest)")
+    p.add_argument("--model", help="decision model: jev-latest, typesafe:<name>, or system-one:<name> (default from config, else jev-latest)")
     p.add_argument("--max-sentence-words", type=int, help="word limit for CLR001 (default 45)")
     p.add_argument("--jev-min-words", type=int, metavar="N",
                    help="shortest paragraph or sentence sent to Jev (default 8; 4 for .pptx)")
@@ -98,7 +98,7 @@ def cmd_list_rules(stream=None) -> int:
             kind = "jev " if rule.kind == "jev" else "    "
             star = " " if rule.default else "·"
             print(f"  {star}{rule.code}  {kind} {rule.scope:<8} {rule.name:<26} {rule.summary}", file=stream)
-    print("\n· = off by default (enable with --select or --extend-select). jev = needs TYPESAFE_API_KEY.", file=stream)
+    print("\n· = off by default (enable with --select or --extend-select). jev = needs a decision model (TYPESAFE_API_KEY, or SYSTEM_ONE_BASE_URL with --model system-one:<name>).", file=stream)
     print("Scope is the level a rule judges: sentence, block (a paragraph), title, section, or document.",
           file=stream)
     return 0
