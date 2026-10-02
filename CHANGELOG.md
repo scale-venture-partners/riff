@@ -15,6 +15,17 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   opening numbers a part ("Part 01", "Section 2", "Chapter III") or that has nothing under its
   title. A divider's title is a label by design. `Section.is_divider` exposes the test.
 
+### Changed
+- riff talks to its model through Pydantic AI's decision models instead of `typesafe-sdk`.
+  `--model` / `model =` accepts `jev-latest` (as before), `typesafe:<name>`, and
+  `system-one:<name>` for any server speaking `POST /v1/systemone` (set `SYSTEM_ONE_BASE_URL`).
+  A language model is rejected: riff needs calibrated probabilities. Thresholds remain tuned to
+  Jev. Transient failures (429, 5xx, transport errors) are retried three times, then counted.
+  The cost estimate shows only for Jev. When a prompt exceeds a model's context window (Ollama's
+  wording), riff warns with the model's limit and the largest prompt instead of failing: those
+  rules did not run and the results are weaker, which is expected of small-context models.
+  `JevUnavailable` is now an alias of `riff.backend.BackendUnavailable`.
+
 ### Added
 - **Documents are read as a hierarchy**: document > sections > titles and blocks > sentences.
   Markdown, HTML and Word headings nest into sections; a deck's slides are its sections, with the

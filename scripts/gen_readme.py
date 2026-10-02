@@ -118,6 +118,26 @@ one at <https://console.typesafe.ai/>). Without it, `--no-jev` runs the static r
 you select a Jev rule with no key, riff stops and tells you the two ways to fix it rather than
 degrading silently.
 
+### Other decision models
+
+Jev is the default, but riff runs on any *decision model*: one that returns a calibrated
+probability per yes/no question instead of generated text. Language models such as GPT or Claude
+are not decision models and are rejected. riff talks to them through
+[Pydantic AI's decision models](https://pydantic.dev/docs/ai/models/decision/):
+
+```console
+riff draft.md                                  # Jev, TYPESAFE_API_KEY
+riff draft.md --model typesafe:jev-latest      # the same, spelled out
+export SYSTEM_ONE_BASE_URL=http://localhost:8000   # any server that speaks POST /v1/systemone
+riff draft.md --model system-one:laya          # Laya, CLM, an Ollama decision model...
+```
+
+Set `SYSTEM_ONE_API_KEY` too if the server needs one. **Thresholds are tuned to Jev.** Another
+model's probabilities sit on a different scale, so check its findings with `--debug-jev` and set
+`[thresholds]` for it before trusting the output. Small-context models (Ollama's `tev1` reads about
+2,000 tokens) cannot hold riff's full rule set; riff warns when a prompt overflows, and `--select`
+asks fewer rules per run.
+
 Each Jev rule is one yes/no (Noul) question asked about one part of the document: a paragraph for
 most rules, or a sentence, a title, a section, or the whole document (see below). It is phrased so a
 high probability means the tell is present. riff prints that probability (`p=0.93`) on every Jev

@@ -16,9 +16,11 @@ Units whose token estimate would exceed Jev's per-request state budget are skipp
 from __future__ import annotations
 
 import asyncio
-import os
 from dataclasses import dataclass
 
+from pydantic_ai.models.decision import NoulQuestion
+
+from riff.backend import BackendUnavailable, ContextExceeded, DecisionError, decide, resolve_model
 from riff.extract import Block, Document, Section
 from riff.rules.base import REGISTRY, Finding, Rule, snippet_of
 from riff.settings import Settings
@@ -48,29 +50,15 @@ def min_words(doc: Document, settings: Settings) -> int:
     return _MIN_WORDS_BY_FORMAT.get(doc.format, _MIN_WORDS)
 
 
-class JevUnavailable(RuntimeError):
-    """Raised when Jev rules are requested but the backend cannot run. Message names the fixes."""
+JevUnavailable = BackendUnavailable
 
 
-def _require_key() -> str:
-    key = os.environ.get("TYPESAFE_API_KEY")
-    if not key:
-        raise JevUnavailable(
-            "Jev rules are enabled but TYPESAFE_API_KEY is not set.\n"
-            "  Fix: export TYPESAFE_API_KEY=... (create one at https://console.typesafe.ai/)\n"
-            "  Or:  run with --no-jev to lint with static rules only."
-        )
-    return key
-
-
-def build_questions(codes: list[str]):
-    from typesafe_sdk import Noul
-
+def build_questions(codes: list[str]) -> dict[str, NoulQuestion]:
     questions = {}
     for code in codes:
         rule = REGISTRY[code]
         if rule.kind == "jev" and rule.question is not None:
-            questions[code] = Noul(instructions=dict(rule.question))
+            questions[code] = NoulQuestion(instructions=dict(rule.question))
     return questions
 
 
@@ -204,7 +192,7 @@ def plan_units(doc: Document, codes: list[str], settings: Settings) -> list[Unit
 
 
 async def run_jev(doc: Document, codes: list[str], settings: Settings, *, debug: bool = False) -> tuple[list[Finding], dict]:
-    """Return (findings, stats). Raises JevUnavailable if the key is missing.
+    """Return (findings, stats). Raises BackendUnavailable if no decision model can be used.
 
     Per-unit API failures are counted in stats["errors"], never disguised as findings; the caller
     turns a nonzero count into a loud, non-zero exit. With debug=True, stats["probabilities"] holds
@@ -215,48 +203,50 @@ async def run_jev(doc: Document, codes: list[str], settings: Settings, *, debug:
     load_rules()
     if not [c for c in codes if REGISTRY[c].kind == "jev"]:
         return [], {"blocks": 0, "calls": 0, "input_tokens": 0, "skipped": 0}
-    _require_key()
-
-    from typesafe_sdk import AsyncTypeSafeClient, RetryPolicy, TypeSafeError
+    model = resolve_model(settings.model)
 
     units = plan_units(doc, codes, settings)
     per_scope: dict[str, int] = {}
     for u in units:
         per_scope[u.scope] = per_scope.get(u.scope, 0) + 1
     stats = {"blocks": per_scope.get("block", 0), "units": per_scope, "min_words": min_words(doc, settings),
-             "calls": 0, "input_tokens": 0, "skipped": 0, "errors": 0, "error_detail": [], "probabilities": []}
+             "calls": 0, "input_tokens": 0, "skipped": 0, "errors": 0, "error_detail": [],
+             "context_exceeded": 0, "context_tokens": 0, "context_limit": 0, "probabilities": [],
+             "model": model.model_name, "system": model.system}
     findings: list[Finding] = []
     sem = asyncio.Semaphore(settings.jev_concurrency)
     questions = {}
 
-    async with AsyncTypeSafeClient(model=settings.model, timeout=60.0,
-                                   retry=RetryPolicy(max_retries=3, timeout=90.0)) as client:
-
-        async def one(unit: Unit) -> list[Finding]:
-            if unit.tokens > _MAX_STATE_TOKENS:
-                stats["skipped"] += 1
+    async def one(unit: Unit) -> list[Finding]:
+        if unit.tokens > _MAX_STATE_TOKENS:
+            stats["skipped"] += 1
+            return []
+        key = tuple(unit.codes)
+        if key not in questions:
+            questions[key] = build_questions(unit.codes)
+        async with sem:
+            try:
+                resp = await decide(model, unit.state, questions[key])
+            except ContextExceeded as exc:
+                stats["context_exceeded"] += 1
+                stats["context_tokens"] = max(stats["context_tokens"], exc.tokens)
+                stats["context_limit"] = exc.limit
                 return []
-            key = tuple(unit.codes)
-            if key not in questions:
-                questions[key] = build_questions(unit.codes)
-            async with sem:
-                try:
-                    resp = await client.system_one(unit.state, questions[key])
-                except TypeSafeError as exc:
-                    stats["errors"] += 1
-                    stats["error_detail"].append(f"{unit.scope} {unit.anchor.location()} {type(exc).__name__}: {exc}")
-                    return []
-            stats["calls"] += 1
-            stats["input_tokens"] += resp.usage.input_tokens
-            if debug:
-                for c in unit.codes:
-                    a = resp.answers.get(c)
-                    if a is not None and hasattr(a, "noul"):
-                        stats["probabilities"].append((unit.anchor.line, c, round(float(a.noul), 3)))
-            return _findings_for_block(doc, unit.anchor, resp, unit.codes, settings, snippet=unit.snippet)
+            except DecisionError as exc:
+                stats["errors"] += 1
+                stats["error_detail"].append(f"{unit.scope} {unit.anchor.location()} {type(exc).__name__}: {exc}")
+                return []
+        stats["calls"] += 1
+        stats["input_tokens"] += resp.usage.input_tokens
+        if debug:
+            for c in unit.codes:
+                a = resp.answers.get(c)
+                if a is not None and hasattr(a, "noul"):
+                    stats["probabilities"].append((unit.anchor.line, c, round(float(a.noul), 3)))
+        return _findings_for_block(doc, unit.anchor, resp, unit.codes, settings, snippet=unit.snippet)
 
-        for result in await asyncio.gather(*(one(u) for u in units)):
-            findings.extend(result)
+    for result in await asyncio.gather(*(one(u) for u in units)):
+        findings.extend(result)
     return findings, stats
 
 

@@ -18,7 +18,7 @@ classifiers = [
   "Topic :: Software Development :: Quality Assurance",
 ]
 dependencies = [
-  "typesafe-sdk>=0.6.0",
+  "pydantic-ai-slim[typesafe]>=2.53",
   "python-docx>=1.1",
   "python-pptx>=1.0",
   "beautifulsoup4>=4.12",
@@ -50,9 +50,6 @@ source = ["riff"]
 branch = true
 
 [tool.coverage.report]
-# jev.py's network calls are exercised only by the live tests (skipped without a key), so exclude
-# them from the offline floor rather than let a keyless run undercount.
-omit = ["src/riff/jev.py"]
 exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]
 fail_under = 90
 

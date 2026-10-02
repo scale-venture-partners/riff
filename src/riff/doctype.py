@@ -1,7 +1,7 @@
 """Whole-document type classification.
 
 Before the rules run, riff can classify what kind of document it is looking at (email, memo,
-essay, ...) with one Jev Choice question over the whole text. Rules then opt in or out of types
+essay, ...) with one decision-model Choice question over the whole text. Rules then opt in or out of types
 (see Rule.applies_to / Rule.skip_for): a greeting is normal in an email but a tell in a memo.
 
 The user can force the type with --type, which skips this call entirely and works without a key.
@@ -9,8 +9,11 @@ The user can force the type with --type, which skips this call entirely and work
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
+
+from pydantic_ai.models.decision import ChoiceQuestion
+
+from riff.backend import BackendUnavailable, DecisionError, decide, resolve_model
 
 # The type vocabulary. Keys are the stable identifiers used in rule `applies_to` / `skip_for`
 # and in `--type`; values are the descriptions sent to the model.
@@ -77,16 +80,16 @@ def is_valid_type(name: str) -> bool:
 
 
 async def classify_document(text: str, word_count: int, *, model: str = "jev-latest") -> DocTypeResult:
-    """Classify the whole document with one Jev Choice call. Requires TYPESAFE_API_KEY.
+    """Classify the whole document with one decision-model Choice call.
 
     Returns the top choice and its confidence. Confidence is recorded, not gated on: in practice
     it does not separate right from wrong classifications, so the escape hatch is --type, not a threshold.
     """
-    if not os.environ.get("TYPESAFE_API_KEY"):
+    try:
+        decision_model = resolve_model(model)
+    except BackendUnavailable:
         return UNRESOLVED
-    from typesafe_sdk import AsyncTypeSafeClient, Choice, RetryPolicy, TypeSafeError
-
-    question = Choice(
+    question = ChoiceQuestion(
         instructions={
             "question": "What kind of document or message is this whole piece?",
             "note": "`word_count` is provided; a very short piece is not automatically a social post or note.",
@@ -94,9 +97,8 @@ async def classify_document(text: str, word_count: int, *, model: str = "jev-lat
         criteria=DOC_TYPES,
     )
     try:
-        async with AsyncTypeSafeClient(model=model, timeout=60.0, retry=RetryPolicy(max_retries=3, timeout=90.0)) as c:
-            resp = await c.system_one({"word_count": word_count, "text": text}, {"type": question})
-    except TypeSafeError:
+        resp = await decide(decision_model, {"word_count": word_count, "text": text}, {"type": question})
+    except DecisionError:
         return UNRESOLVED
     ans = resp.answers.get("type")
     if ans is None or not hasattr(ans, "choice"):

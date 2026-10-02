@@ -28,8 +28,9 @@ uv run pytest --cov                    # tests + coverage (floor: 90%)
 
 The static tests run offline. The live Jev tests skip automatically when
 `TYPESAFE_API_KEY` is unset, so a bare `pytest` is green without a key; set the
-key to exercise the model path. Coverage is enforced at 90% in CI; `jev.py`'s
-network calls are excluded from the floor since only the live tests reach them.
+key to exercise the model path. `tests/test_backend.py` runs the real Pydantic AI
+`system-one:` model against a local `/v1/systemone` server, so the request, retry and
+error-counting paths are covered offline. Coverage is enforced at 90% in CI.
 
 ### Mutation testing
 

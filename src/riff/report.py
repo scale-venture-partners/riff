@@ -85,6 +85,10 @@ def _summary(results: list[LintResult], total: int, stream, color: bool) -> None
     _jev_note(results, stream, color)
 
 
+# TypeSafe's published Jev input price; output tokens are free.
+_JEV_USD_PER_TOKEN = 0.042 / 1e6
+
+
 def _jev_note(results: list[LintResult], stream, color: bool) -> None:
     stats = [r.jev_stats for r in results if r.jev_stats]
     if not stats:
@@ -93,10 +97,21 @@ def _jev_note(results: list[LintResult], stream, color: bool) -> None:
     toks = sum(s.get("input_tokens", 0) for s in stats)
     skipped = sum(s.get("skipped", 0) for s in stats)
     errors = sum(s.get("errors", 0) for s in stats)
-    note = f"Jev: {calls} calls, {toks:,} input tokens (~${toks * 0.042 / 1e6:.4f})"
+    label = next((s["model"] for s in stats if s.get("model")), "Jev")
+    note = f"{label}: {calls} calls, {toks:,} input tokens"
+    if any(s.get("system") == "typesafe" for s in stats):
+        note += f" (~${toks * _JEV_USD_PER_TOKEN:.4f})"
     if skipped:
         note += f", {skipped} block(s) skipped as too long"
     print(f"{_DIM if color else ''}{note}{_RESET if color else ''}", file=stream)
+    over = sum(s.get("context_exceeded", 0) for s in stats)
+    if over:
+        limit = max(s.get("context_limit", 0) for s in stats)
+        biggest = max(s.get("context_tokens", 0) for s in stats)
+        warn = (f"WARNING: {label}'s context ({limit:,} tokens) is too small for {over} request(s) "
+                f"(largest {biggest:,} tokens), so those rules did not run and results are weaker. "
+                "Ask fewer rules with --select, or use a model with a larger context.")
+        print(f"{_COLOR['error'] if color else ''}{warn}{_RESET if color else ''}", file=stream)
     if errors:
         warn = f"WARNING: {errors} Jev request(s) failed; this lint is incomplete."
         print(f"{_COLOR['error'] if color else ''}{warn}{_RESET if color else ''}", file=stream)
