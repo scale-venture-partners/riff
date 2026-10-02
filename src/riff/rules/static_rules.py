@@ -46,6 +46,10 @@ _PULL_QUOTE = re.compile(r"^\s*([\u201c\u2018])[^\u201c\u201d]*([\u201d\u2019])\
 
 
 def _pull_quote_marks(text: str) -> set[int]:
+    """Positions of quote marks that are layout, not writing: the pair enclosing a whole
+    block, or a block that is nothing but quote marks (a hanging quote set as its own box)."""
+    if text.strip() and not text.strip("\u201c\u201d\u2018\u2019 \n"):
+        return {i for i, ch in enumerate(text) if ch in "\u201c\u201d\u2018\u2019"}
     m = _PULL_QUOTE.match(text)
     return {m.start(1), m.start(2)} if m else set()
 

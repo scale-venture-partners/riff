@@ -122,3 +122,4 @@ def test_a_pull_quote_enclosing_its_block_is_not_decorative():
     inline = check(extract_markdown("He said \u201chello\u201d and left."), Settings())
     assert len(inline) == 2, "quotes inside a sentence are still the tell"
     assert len(check(extract_markdown("\u201cAn opening quote that never closes"), Settings())) == 1
+    assert check(extract_markdown("\u201c"), Settings()) == [], "a hanging quote set as its own box"
