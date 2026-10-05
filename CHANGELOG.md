@@ -6,25 +6,7 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Fixed
-- `RIF001` no longer flags a pair of typographic quotes that encloses a whole block: a pull quote
-  set by a layout (a slide library's statement slide wraps every quote in them), not a tell the
-  writer typed; so is a block that is nothing but a quote mark (a hanging quote set as its own
-  text box). Curly quotes inside a sentence are still flagged.
-- Title and section rules (`JEV701`, `JEV702`, `JEV703`) skip section dividers: a section whose
-  opening numbers a part ("Part 01", "Section 2", "Chapter III") or that has nothing under its
-  title. A divider's title is a label by design. `Section.is_divider` exposes the test.
-
-### Changed
-- riff talks to its model through Pydantic AI's decision models instead of `typesafe-sdk`.
-  `--model` / `model =` accepts `jev-latest` (as before), `typesafe:<name>`, and
-  `system-one:<name>` for any server speaking `POST /v1/systemone` (set `SYSTEM_ONE_BASE_URL`).
-  A language model is rejected: riff needs calibrated probabilities. Thresholds remain tuned to
-  Jev. Transient failures (429, 5xx, transport errors) are retried three times, then counted.
-  The cost estimate shows only for Jev. When a prompt exceeds a model's context window (Ollama's
-  wording), riff warns with the model's limit and the largest prompt instead of failing: those
-  rules did not run and the results are weaker, which is expected of small-context models.
-  `JevUnavailable` is now an alias of `riff.backend.BackendUnavailable`.
+## [0.2.0] - 2026-10-05
 
 ### Added
 - **Documents are read as a hierarchy**: document > sections > titles and blocks > sentences.
@@ -50,11 +32,6 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Custom rules: `type = "regex"` (case-sensitive unless `ignore-case = true`), `case-sensitive` phrase
   rules, `blocks = "all"` to include titles and headings, and Jev custom rules at any `scope`, with
   `view` and `fragments`.
-
-### Changed
-- `JEV001`, `JEV010`, `JEV111` and `JEV112` skip the new `presentation` type.
-- `--list-rules` and the README rule table show each rule's level; `--explain` shows its level, view,
-  and type gating.
 - Lint a web page by URL: `riff https://…` fetches the page and lints only its article body (largest
   `<article>`, else `<main>`, else `<body>`, minus nav/header/footer/sidebar chrome). Findings are
   labelled `block N`. HTML only; no new dependencies.
@@ -63,6 +40,31 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   `RIF004` is a static check for the short badge forms in titles, bullets, and table cells, which the
   per-block Jev pass skips; `JEV011` asks Jev about longer asides ("previously this said X"). Both skip
   `release_notes` and `notes`. `static_rule` now accepts `skip_for`.
+
+### Changed
+- riff talks to its model through Pydantic AI's decision models instead of `typesafe-sdk`.
+  `--model` / `model =` accepts `jev-latest` (as before), `typesafe:<name>`, and
+  `system-one:<name>` for any server speaking `POST /v1/systemone` (set `SYSTEM_ONE_BASE_URL`).
+  A language model is rejected: riff needs calibrated probabilities. Thresholds remain tuned to
+  Jev. Transient failures (429, 5xx, transport errors) are retried three times, then counted.
+  The cost estimate shows only for Jev. When a prompt exceeds a model's context window (Ollama's
+  wording), riff warns with the model's limit and the largest prompt instead of failing: those
+  rules did not run and the results are weaker, which is expected of small-context models.
+  `JevUnavailable` is now an alias of `riff.backend.BackendUnavailable`.
+- `JEV001`, `JEV010`, `JEV111` and `JEV112` skip the new `presentation` type.
+- `--list-rules` and the README rule table show each rule's level; `--explain` shows its level, view,
+  and type gating.
+
+### Fixed
+- `RIF001` no longer flags a pair of typographic quotes that encloses a whole block: a pull quote
+  set by a layout (a slide library's statement slide wraps every quote in them), not a tell the
+  writer typed; so is a block that is nothing but a quote mark (a hanging quote set as its own
+  text box). Curly quotes inside a sentence are still flagged.
+- Title and section rules (`JEV701`, `JEV702`, `JEV703`) skip section dividers: a section whose
+  opening numbers a part ("Part 01", "Section 2", "Chapter III") or that has nothing under its
+  title. A divider's title is a label by design. `Section.is_divider` exposes the test.
+
+## [0.1.0] - 2026-09-18
 
 ### Changed
 - Raised the `JEV502` (vague-abstraction) threshold to 0.85. On a corpus of real professional
