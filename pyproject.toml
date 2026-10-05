@@ -1,6 +1,6 @@
 [project]
 name = "riff-lint"
-version = "0.1.0"
+version = "0.2.0"
 description = "A small, fast prose linter: ruff-style rule codes for writing, backed by TypeSafe's Jev model"
 readme = "README.md"
 requires-python = ">=3.11"
