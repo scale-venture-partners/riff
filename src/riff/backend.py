@@ -2,8 +2,9 @@
 
 riff needs a calibrated probability per judgment, which only decision models return. A bare name such
 as `jev-latest` means TypeSafe's Jev; `typesafe:jev-latest` and `system-one:<name>` select a provider
-explicitly. `system-one:` covers any server speaking `POST /v1/systemone` (set SYSTEM_ONE_BASE_URL and
-optionally SYSTEM_ONE_API_KEY), such as Laya, Ollama's decision models, or OpenRouter.
+explicitly. `openai:<name>` is OpenAI's Decisions API (OPENAI_API_KEY). `system-one:` covers any server
+speaking `POST /v1/systemone` (set SYSTEM_ONE_BASE_URL and optionally SYSTEM_ONE_API_KEY), such as Laya,
+Ollama's decision models, or OpenRouter.
 """
 
 from __future__ import annotations
@@ -20,6 +21,8 @@ from pydantic_ai.models.decision import (
     DecisionRequest,
     DecisionResponse,
 )
+
+from riff.openai_decisions import OpenAIDecisionModel
 
 DEFAULT_PROVIDER = "typesafe"
 REQUEST_TIMEOUT = 60.0
@@ -54,20 +57,22 @@ def qualified_name(name: str) -> str:
 def resolve_model(name: str) -> DecisionModel:
     spec = qualified_name(name)
     try:
-        model = infer_model(spec)
+        # Pydantic AI maps `openai:` to OpenAI's language models, so the Decisions API is routed here.
+        model = OpenAIDecisionModel(spec.removeprefix("openai:")) if spec.startswith("openai:") else infer_model(spec)
     except ImportError as exc:
         raise BackendUnavailable(f"Cannot use decision model {spec!r}: {exc}") from exc
     except UserError as exc:
         raise BackendUnavailable(
             f"Cannot use decision model {spec!r}: {str(exc).split(' To try')[0]}\n"
             "  Jev:   export TYPESAFE_API_KEY=... (create one at https://console.typesafe.ai/)\n"
+            "  OpenAI: --model openai:gpt-6-luna with OPENAI_API_KEY set\n"
             "  Other: --model system-one:<name> with SYSTEM_ONE_BASE_URL set (and SYSTEM_ONE_API_KEY if it needs one)\n"
             "  Or:    run with --no-jev to lint with static rules only."
         ) from exc
     if not isinstance(model, DecisionModel):
         raise BackendUnavailable(
             f"{spec!r} is a language model. riff needs a decision model that returns calibrated probabilities "
-            "(typesafe:, system-one:)."
+            "(typesafe:, openai:gpt-6-luna, system-one:)."
         )
     return model
 

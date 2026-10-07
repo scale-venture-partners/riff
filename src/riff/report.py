@@ -87,6 +87,8 @@ def _summary(results: list[LintResult], total: int, stream, color: bool) -> None
 
 # TypeSafe's published Jev input price; output tokens are free.
 _JEV_USD_PER_TOKEN = 0.042 / 1e6
+# OpenAI's published Decisions API input price; nothing else is billed.
+_OPENAI_USD_PER_TOKEN = 0.10 / 1e6
 
 
 def _jev_note(results: list[LintResult], stream, color: bool) -> None:
@@ -101,6 +103,8 @@ def _jev_note(results: list[LintResult], stream, color: bool) -> None:
     note = f"{label}: {calls} calls, {toks:,} input tokens"
     if any(s.get("system") == "typesafe" for s in stats):
         note += f" (~${toks * _JEV_USD_PER_TOKEN:.4f})"
+    elif any(s.get("system") == "openai" for s in stats):
+        note += f" (~${toks * _OPENAI_USD_PER_TOKEN:.4f})"
     if skipped:
         note += f", {skipped} block(s) skipped as too long"
     print(f"{_DIM if color else ''}{note}{_RESET if color else ''}", file=stream)
