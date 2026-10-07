@@ -6,6 +6,11 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- OpenAI Decisions API support: `--model openai:gpt-6-luna` (reads `OPENAI_API_KEY`, and
+  `OPENAI_BASE_URL` to override the host). Yes/no rules are sent as `predicate` questions and the
+  document-type classifier as a `choice` question. Thresholds are still tuned to Jev.
+
 ## [0.2.0] - 2026-10-05
 
 ### Added
