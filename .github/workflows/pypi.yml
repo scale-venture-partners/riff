@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   check-version:
-    runs-on: ubuntu-latest
+    runs-on: nscloud-ubuntu-24.04-amd64-4x8
     steps:
       - uses: actions/checkout@v4
       - name: Check tag matches pyproject.toml version
@@ -23,7 +23,7 @@ jobs:
 
   build:
     needs: check-version
-    runs-on: ubuntu-latest
+    runs-on: nscloud-ubuntu-24.04-amd64-4x8
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
@@ -37,7 +37,7 @@ jobs:
   publish:
     name: Publish to PyPI
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: nscloud-ubuntu-24.04-amd64-4x8
     environment: pypi
     permissions:
       id-token: write   # trusted publishing (OIDC); no API token needed
