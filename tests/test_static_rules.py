@@ -167,3 +167,23 @@ def test_varied_paragraph_length_ok():
 
 def test_too_few_paragraphs_not_judged():
     assert "CLR006" not in codes(_paras([40] * 4))
+
+
+def _closer_para(last):
+    return ("The system runs jobs in a queue that workers drain in order. Each job is retried on failure up to five times. "
+            "Retries use exponential backoff with jitter so that load spreads out across the cluster. " + last)
+
+
+def test_conclusion_closers_flagged_when_common():
+    text = "\n\n".join([_closer_para("So the queue stays small."), _closer_para("Both paths end at one gate."),
+                        _closer_para("That is why retries matter.")] + [_closer_para("Latency fell to 92 seconds.")] * 4)
+    assert codes(text).count("CLR007") == 3
+
+
+def test_conclusion_closers_rare_is_fine():
+    text = "\n\n".join([_closer_para("So the queue stays small.")] + [_closer_para("Latency fell to 92 seconds.")] * 9)
+    assert "CLR007" not in codes(text)
+
+
+def test_conclusion_closers_needs_enough_paragraphs():
+    assert "CLR007" not in codes("\n\n".join([_closer_para("So it works.")] * 3))

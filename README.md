@@ -272,7 +272,7 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 
 ## Rules
 
-72 rules (61 semantic, 11 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
+73 rules (61 semantic, 12 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
 
 ### CLR — Clarity metrics (arithmetic Jev can't do)
 
@@ -284,6 +284,7 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `CLR004` | repeated-contrast-frame |   | static | document | Leans on 'X instead of Y' / 'not X but Y' framing | tropes.fyi |
 | `CLR005` | uniform-sentence-length |   | static | document | Sentence lengths are unusually even | Desaire et al. 2023 (PMC10328544); Wikipedia, Signs of AI writing |
 | `CLR006` | uniform-paragraph-length |   | static | document | Paragraph lengths are unusually even | Desaire et al. 2023 (PMC10328544); Wikipedia, Signs of AI writing |
+| `CLR007` | conclusion-closers |   | static | document | Paragraphs keep closing on a 'So…' / 'which is why…' takeaway | tropes.fyi |
 
 ### JEV — Semantic rules (Jev model) — the bulk of the catalog
 

@@ -301,3 +301,33 @@ def uniform_paragraph_length(doc: Document, settings: Settings) -> list[Finding]
         return []
     return [finding("CLR006", doc, blocks[0],
                     f"paragraph-length variation {cv:.2f} over {len(blocks)} paragraphs (human prose ~0.5-0.7)")]
+
+
+# Paragraphs of 3+ sentences whose last sentence opens with a conclusion word or says "which is why".
+# Public human technical posts: 0-3% of paragraphs; an AI-written draft: 21%.
+_CLOSER_CUE = re.compile(r"^(?:so|both|each|every)\b|\b(?:which|that|this) is why\b", re.I)
+_MIN_CLOSER_PARAGRAPHS, _MIN_CLOSER_SHARE, _MIN_CLOSER_HITS = 6, 0.15, 3
+
+
+@static_rule("CLR007", "conclusion-closers", "Paragraphs keep closing on a 'So…' / 'which is why…' takeaway",
+             category="Composition", source="Wikipedia, Signs of AI writing (section summaries); tropes.fyi",
+             explanation="Closing a paragraph on a tidy takeaway is fine once. When 15% or more of paragraphs end on "
+             "a sentence that opens 'So', 'Both', 'Each', 'Every' or says 'which is why', the habit reads as "
+             "generated. A Jev judgment of the same idea did not separate human from AI posts, so this is a "
+             "narrow cue count.",
+             examples=("Both paths end at the same gate, which is why its speed matters on either one.",),
+             scope="document")
+def conclusion_closers(doc: Document, settings: Settings) -> list[Finding]:
+    paragraphs = []
+    for block in doc.prose:
+        sentences = split_sentences(block.text)
+        if len(sentences) >= 3 and block.word_count >= 40 and not _is_link_dump(block.text):
+            paragraphs.append((block, sentences[-1].text))
+    hits = [(b, last) for b, last in paragraphs if _CLOSER_CUE.search(last)]
+    if len(paragraphs) < _MIN_CLOSER_PARAGRAPHS or len(hits) < _MIN_CLOSER_HITS:
+        return []
+    share = len(hits) / len(paragraphs)
+    if share < _MIN_CLOSER_SHARE:
+        return []
+    return [finding("CLR007", doc, b, f"closing sentence is a takeaway ({len(hits)} of {len(paragraphs)} paragraphs)",
+                    snippet=snippet_of(last)) for b, last in hits]
