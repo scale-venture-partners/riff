@@ -242,6 +242,7 @@ def static_rule(
     scope: Scope = "block",
     default: bool = True,
     severity: Severity = "warning",
+    applies_to: tuple[str, ...] = (),
     skip_for: tuple[str, ...] = (),
 ) -> Callable[[Checker], Rule]:
     def deco(fn: Checker) -> Rule:
@@ -259,6 +260,7 @@ def static_rule(
                 default=default,
                 severity=severity,
                 check=fn,
+                applies_to=applies_to,
                 skip_for=skip_for,
             )
         )
