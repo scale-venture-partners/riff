@@ -130,3 +130,11 @@ def test_pptx_roundtrip(tmp_path, make_pptx):
 def test_unsupported_extension(tmp_path):
     with pytest.raises(ValueError, match="unsupported"):
         extract(tmp_path / "nope.pdf")
+
+
+def test_main_content_survives_nested_chrome_roles():
+    html = ('<body><div role="navigation"><div role="search"><p>find things on this site</p></div></div>'
+            "<article><h1>Title</h1><p>" + "A real article paragraph with enough text to count. " * 3 + "</p></article></body>")
+    doc = extract_html(html, "t.html", main_content=True)
+    assert any("real article" in b.text for b in doc.blocks)
+    assert not any("find things" in b.text for b in doc.blocks)

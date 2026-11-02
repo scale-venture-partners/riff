@@ -14,7 +14,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from riff.engine import lint_document
-from riff.extract import extract
+from riff.extract import extract, extract_html
 from riff.rules import load_rules
 from riff.rules.structure_rules import peer_sections, section_words
 from riff.settings import Settings
@@ -43,7 +43,8 @@ def main() -> None:
         for path in sorted((root / label).glob("*")):
             if path.suffix not in (".md", ".html", ".txt"):
                 continue
-            doc = extract(path)
+            doc = extract_html(path.read_text(errors='ignore'), path.name, main_content=True) \
+                if path.suffix == ".html" else extract(path)
             n[label] += 1
             for code in {f.code for f in lint_document(doc, settings).findings}:
                 fires[code][label].append(path.name)
