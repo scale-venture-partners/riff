@@ -109,13 +109,9 @@ riff draft.md                                  # Jev, TYPESAFE_API_KEY
 riff draft.md --model typesafe:jev-latest      # the same, spelled out
 export SYSTEM_ONE_BASE_URL=http://localhost:8000   # any server that speaks POST /v1/systemone
 riff draft.md --model system-one:laya          # Laya, CLM, an Ollama decision model...
-export OPENAI_API_KEY=sk-...                   # OpenAI's Decisions API (public beta)
-riff draft.md --model openai:gpt-6-luna
 ```
 
-Set `SYSTEM_ONE_API_KEY` too if the server needs one. `openai:` calls `POST /v1/decisions` (override
-the host with `OPENAI_BASE_URL`); riff's yes/no rules map to OpenAI's `predicate` questions. A refusal
-counts as an error, never as a clean pass. **Thresholds are tuned to Jev.** Another
+Set `SYSTEM_ONE_API_KEY` too if the server needs one. **Thresholds are tuned to Jev.** Another
 model's probabilities sit on a different scale, so check its findings with `--debug-jev` and set
 `[thresholds]` for it before trusting the output. Small-context models (Ollama's `tev1` reads about
 2,000 tokens) cannot hold riff's full rule set; riff warns when a prompt overflows, and `--select`
@@ -276,7 +272,7 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 
 ## Rules
 
-69 rules (61 semantic, 8 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
+72 rules (61 semantic, 11 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
 
 ### CLR — Clarity metrics (arithmetic Jev can't do)
 
@@ -285,6 +281,9 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `CLR001` | long-sentence |   | static | document | Sentence longer than the configured word limit | Williams |
 | `CLR002` | hard-to-read | · | static | document | Paragraph reading grade above the configured level | Williams |
 | `CLR003` | duplicate-paragraph |   | static | document | Paragraph repeated near-verbatim elsewhere | tropes.fyi |
+| `CLR004` | repeated-contrast-frame |   | static | document | Leans on 'X instead of Y' / 'not X but Y' framing | tropes.fyi |
+| `CLR005` | uniform-sentence-length |   | static | document | Sentence lengths are unusually even | Desaire et al. 2023 (PMC10328544); Wikipedia, Signs of AI writing |
+| `CLR006` | uniform-paragraph-length |   | static | document | Paragraph lengths are unusually even | Desaire et al. 2023 (PMC10328544); Wikipedia, Signs of AI writing |
 
 ### JEV — Semantic rules (Jev model) — the bulk of the catalog
 

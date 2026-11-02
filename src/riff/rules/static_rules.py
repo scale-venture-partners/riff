@@ -225,3 +225,79 @@ def duplicate_paragraph(doc: Document, settings: Settings) -> list[Finding]:
         else:
             seen[key] = block
     return out
+
+
+# ---------------------------------------------------------------- rhythm metrics (CLR004-006)
+
+STYLOMETRY = "Desaire et al. 2023 (PMC10328544); Wikipedia, Signs of AI writing"
+
+# Calibrated on public human technical posts (Dan Luu, Julia Evans, Joel Spolsky): sentence-length CV
+# 0.59-0.79 and paragraph-length CV 0.46-0.66; none trips the contrast-frame limit. Thresholds sit below
+# the human range, leaving margin for lightly edited drafts.
+_MIN_SENTENCES, _MIN_SENTENCE_CV = 25, 0.50
+_MIN_PARAGRAPHS, _MIN_PARAGRAPH_CV = 8, 0.36
+_MIN_CONTRASTS, _MAX_CONTRASTS_PER_1000 = 3, 2.5
+
+_CONTRAST = re.compile(
+    r"\b(?:instead of|rather than|not (?:only|just) [^.;]{1,60}?,? but|not [^.;,]{1,40}, but)\b", re.I)
+
+
+def _is_link_dump(text: str) -> bool:
+    return text.count("·") >= 2 or text.count("](http") >= 2
+
+
+def _cv(values: list[int]) -> float:
+    mean = sum(values) / len(values)
+    return (sum((v - mean) ** 2 for v in values) / len(values)) ** 0.5 / mean
+
+
+@static_rule("CLR004", "repeated-contrast-frame", "Leans on 'X instead of Y' / 'not X but Y' framing",
+             category="Composition", source=f"{TROPES}; Wikipedia, Signs of AI writing",
+             explanation="One contrast frame is fine; a post that keeps defining its points against an alternative "
+             "('instead of', 'rather than', 'not just X, but Y') reads as generated. Counted per 1,000 words, "
+             "so it stays in code.",
+             examples=("We open one PR per epic instead of many. A reviewer sees one unit instead of fragments.",),
+             scope="document")
+def repeated_contrast_frame(doc: Document, settings: Settings) -> list[Finding]:
+    prose = [b for b in doc.prose if not _is_link_dump(b.text)]
+    total = sum(b.word_count for b in prose)
+    hits = [(b, m) for b in prose for m in _CONTRAST.finditer(b.text)]
+    if total == 0 or len(hits) < _MIN_CONTRASTS or len(hits) * 1000 / total <= _MAX_CONTRASTS_PER_1000:
+        return []
+    rate = len(hits) * 1000 / total
+    return [finding("CLR004", doc, b, f"contrast frame #{i} of {len(hits)} ({rate:.1f} per 1,000 words)",
+                    snippet=snippet_of(b.text[max(0, m.start() - 30): m.end() + 30]))
+            for i, (b, m) in enumerate(hits, 1)]
+
+
+@static_rule("CLR005", "uniform-sentence-length", "Sentence lengths are unusually even",
+             category="Composition", source=STYLOMETRY,
+             explanation="Human prose mixes short and long sentences; generated prose clusters in a narrow band. "
+             "Flags a coefficient of variation of sentence length below 0.50 over at least 25 sentences.",
+             examples=(), scope="document")
+def uniform_sentence_length(doc: Document, settings: Settings) -> list[Finding]:
+    lengths = [word_count(s.text) for b in doc.prose if not _is_link_dump(b.text) for s in split_sentences(b.text)]
+    lengths = [n for n in lengths if n > 0]
+    if len(lengths) < _MIN_SENTENCES:
+        return []
+    cv = _cv(lengths)
+    if cv >= _MIN_SENTENCE_CV:
+        return []
+    return [finding("CLR005", doc, doc.prose[0],
+                    f"sentence-length variation {cv:.2f} over {len(lengths)} sentences (human prose ~0.6-0.8)")]
+
+
+@static_rule("CLR006", "uniform-paragraph-length", "Paragraph lengths are unusually even",
+             category="Composition", source=STYLOMETRY,
+             explanation="Human paragraphs vary more in length than generated ones. Flags a coefficient of variation "
+             "of paragraph length below 0.36 over at least 8 paragraphs of 15+ words.",
+             examples=(), scope="document")
+def uniform_paragraph_length(doc: Document, settings: Settings) -> list[Finding]:
+    blocks = [b for b in doc.prose if b.word_count >= 15 and not _is_link_dump(b.text)]
+    if len(blocks) < _MIN_PARAGRAPHS:
+        return []
+    cv = _cv([b.word_count for b in blocks])
+    if cv >= _MIN_PARAGRAPH_CV:
+        return []
+    return [finding("CLR006", doc, blocks[0],
+                    f"paragraph-length variation {cv:.2f} over {len(blocks)} paragraphs (human prose ~0.5-0.7)")]
