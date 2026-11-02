@@ -348,7 +348,7 @@ def _content_root(soup):
     for tag in soup(_CHROME_TAGS):
         tag.decompose()
     for el in soup.find_all(attrs={"role": True}):
-        if el.get("role") in _CHROME_ROLES:
+        if not el.decomposed and el.get("role") in _CHROME_ROLES:
             el.decompose()
     articles = soup.find_all("article")
     scope = max(articles, key=_text_len) if articles else (soup.find("main") or soup.body or soup)
