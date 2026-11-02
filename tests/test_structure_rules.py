@@ -28,10 +28,9 @@ def test_second_h1():
     assert "RIF006" in codes("# One\n\nText.\n\n# Two\n\nText.", "RIF006")
 
 
-def test_empty_section_and_lone_subsection():
-    md = "# Title\n\nIntro.\n\n## A\n\n### Only child\n\nText."
-    found = codes(md, "RIF006")
-    assert found.count("RIF006") == 2  # A has no text before its subheading; A has one subsection
+def test_lone_subsection():
+    md = "# Title\n\nIntro.\n\n## A\n\nText.\n\n### Only child\n\nText."
+    assert codes(md, "RIF006").count("RIF006") == 1
 
 
 def test_h1_followed_by_h2_is_not_empty():

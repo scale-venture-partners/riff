@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 GOOGLE_HEADINGS = "Google developer documentation style guide: headings"
 APA_HEADINGS = "APA Style: headings"
 NO_DECKS = ("presentation",)
+FORMAL_TYPES = ("documentation", "report", "memo", "academic_paper", "release_notes")
 
 
 def _headings(doc: Document) -> list[Block]:
@@ -31,10 +32,12 @@ def _headings(doc: Document) -> list[Block]:
 # ---------------------------------------------------------------- headings (RIF006, RIF007)
 
 
-@static_rule("RIF006", "heading-hierarchy", "Heading levels skip, sit empty, stand alone, or repeat h1",
-             category="Structure", source=f"{GOOGLE_HEADINGS}; {APA_HEADINGS}", skip_for=NO_DECKS,
-             explanation="A heading level should not jump (h2 straight to h4), a heading should have text under it "
-             "before its subheadings, a section should not hold a single subsection, and a page has one h1.",
+@static_rule("RIF006", "heading-hierarchy", "Heading levels skip, a section has one subsection, or h1 repeats",
+             category="Structure", source=f"{GOOGLE_HEADINGS}; {APA_HEADINGS}", applies_to=FORMAL_TYPES,
+             explanation="A heading level should not jump (h2 straight to h4), a section should not hold a single "
+             "subsection, and a page has one h1. A style norm for docs and formal writing: 10 of 43 human technical "
+             "blog posts break it, so it is gated to those types. Empty sections are not checked, because the "
+             "extractor does not see code blocks or tables.",
              examples=("## Setup\n#### Details",), scope="document")
 def heading_hierarchy(doc: Document, settings: Settings) -> list[Finding]:
     out = []
@@ -59,9 +62,6 @@ def heading_hierarchy(doc: Document, settings: Settings) -> list[Finding]:
             out.append(finding("RIF006", doc, section.children[0].title,
                                f"only subsection under '{snippet_of(title.text)}'; add a sibling or fold it in",
                                snippet=snippet_of(section.children[0].title.text)))
-        if not section.blocks and section.level > 1:
-            kind = "subheading follows directly" if section.children else "nothing under it"
-            out.append(finding("RIF006", doc, title, f"empty section: {kind}", snippet=snippet_of(title.text)))
     return out
 
 
@@ -151,7 +151,7 @@ def changelog_shape(doc: Document, settings: Settings) -> list[Finding]:
 
 @static_rule("RIF009", "single-item-list", "A list with one item",
              category="Structure", source="Google developer documentation style guide: lists",
-             skip_for=NO_DECKS,
+             applies_to=("documentation", "release_notes", "product_description"),
              explanation="A list needs at least two items; one item is a sentence.",
              examples=("- Only item",), scope="document")
 def single_item_list(doc: Document, settings: Settings) -> list[Finding]:
@@ -202,10 +202,11 @@ def _cv(values: list[int]) -> float:
 
 @static_rule("CLR008", "uniform-section-size", "Sections are all about the same length",
              category="Structure", source="Corpus calibration (human technical posts vs AI drafts)",
-             skip_for=NO_DECKS + ("documentation", "release_notes", "resume", "poem", "script"),
+             default=False, skip_for=NO_DECKS + ("documentation", "release_notes", "resume", "poem", "script"),
              explanation="Human documents have a main section and a short one; generated drafts give every heading "
              "roughly equal weight. Flags a coefficient of variation of section length below 0.30 across 4+ "
-             "sibling sections.",
+             "sibling sections. Off by default: on 24 human and 16 AI documents the distributions overlap "
+             "heavily (human 0.31-1.34, AI 0.22-0.77), so it is weak evidence.",
              examples=(), scope="document")
 def uniform_section_size(doc: Document, settings: Settings) -> list[Finding]:
     peers = peer_sections(doc)
@@ -222,9 +223,10 @@ def uniform_section_size(doc: Document, settings: Settings) -> list[Finding]:
 
 @static_rule("CLR009", "paragraph-too-long", "Paragraph runs past the sentence limit",
              category="Structure", source="Google developer documentation style guide: paragraphs",
-             skip_for=NO_DECKS + ("poem", "script", "resume", "academic_paper", "book_chapter"),
+             default=False, skip_for=NO_DECKS + ("poem", "script", "resume", "academic_paper", "book_chapter"),
              explanation="Google: a paragraph longer than five or six sentences often tries to convey too much. "
-             "Flags paragraphs over the limit (default 8).",
+             "Flags paragraphs over the limit (default 8). Off by default: 15 of 43 human posts trip it and no AI "
+             "draft does, since AI paragraphs run short.",
              examples=(), scope="document")
 def paragraph_too_long(doc: Document, settings: Settings) -> list[Finding]:
     out = []

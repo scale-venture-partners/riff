@@ -51,6 +51,11 @@ def main() -> None:
             m = metrics(doc)
             if "section_cv" in m:
                 cvs[label].append((round(m["section_cv"], 2), path.name[:40]))
+    union = {label: set() for label in ("human", "ai")}
+    for code in ("CLR004", "CLR005", "CLR006", "CLR007"):
+        for label in union:
+            union[label] |= set(fires[code][label])
+    print(f"rhythm rules (CLR004-007) combined: human {len(union['human'])}/{n['human']}, ai {len(union['ai'])}/{n['ai']}")
     print(f"documents: human={n['human']} ai={n['ai']}")
     print(f"{'rule':8} {'human':>10} {'ai':>10}")
     for code in rules:
