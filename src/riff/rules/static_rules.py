@@ -231,11 +231,10 @@ def duplicate_paragraph(doc: Document, settings: Settings) -> list[Finding]:
 
 STYLOMETRY = "Desaire et al. 2023 (PMC10328544); Wikipedia, Signs of AI writing"
 
-# Calibrated on public human technical posts (Dan Luu, Julia Evans, Joel Spolsky): sentence-length CV
-# 0.59-0.79 and paragraph-length CV 0.46-0.66; none trips the contrast-frame limit. Thresholds sit below
-# the human range, leaving margin for lightly edited drafts.
-_MIN_SENTENCES, _MIN_SENTENCE_CV = 25, 0.50
-_MIN_PARAGRAPHS, _MIN_PARAGRAPH_CV = 8, 0.36
+# Calibrated on 43 human technical posts (pre-2022) and 16 AI drafts: human sentence-length CV 0.46-1.02 and
+# paragraph-length CV 0.40-1.28; no human post trips any limit here. AI drafts: 0.41-0.72 and 0.30-0.57.
+_MIN_SENTENCES, _MIN_SENTENCE_CV = 25, 0.45
+_MIN_PARAGRAPHS, _MIN_PARAGRAPH_CV = 8, 0.40
 _MIN_CONTRASTS, _MAX_CONTRASTS_PER_1000 = 3, 2.5
 
 _CONTRAST = re.compile(
@@ -273,7 +272,7 @@ def repeated_contrast_frame(doc: Document, settings: Settings) -> list[Finding]:
 @static_rule("CLR005", "uniform-sentence-length", "Sentence lengths are unusually even",
              category="Composition", source=STYLOMETRY,
              explanation="Human prose mixes short and long sentences; generated prose clusters in a narrow band. "
-             "Flags a coefficient of variation of sentence length below 0.50 over at least 25 sentences.",
+             "Flags a coefficient of variation of sentence length below 0.45 over at least 25 sentences.",
              examples=(), scope="document")
 def uniform_sentence_length(doc: Document, settings: Settings) -> list[Finding]:
     lengths = [word_count(s.text) for b in doc.prose if not _is_link_dump(b.text) for s in split_sentences(b.text)]
@@ -284,13 +283,13 @@ def uniform_sentence_length(doc: Document, settings: Settings) -> list[Finding]:
     if cv >= _MIN_SENTENCE_CV:
         return []
     return [finding("CLR005", doc, doc.prose[0],
-                    f"sentence-length variation {cv:.2f} over {len(lengths)} sentences (human prose ~0.6-0.8)")]
+                    f"sentence-length variation {cv:.2f} over {len(lengths)} sentences (human prose 0.5-1.0)")]
 
 
 @static_rule("CLR006", "uniform-paragraph-length", "Paragraph lengths are unusually even",
              category="Composition", source=STYLOMETRY,
              explanation="Human paragraphs vary more in length than generated ones. Flags a coefficient of variation "
-             "of paragraph length below 0.36 over at least 8 paragraphs of 15+ words.",
+             "of paragraph length below 0.40 over at least 8 paragraphs of 15+ words.",
              examples=(), scope="document")
 def uniform_paragraph_length(doc: Document, settings: Settings) -> list[Finding]:
     blocks = [b for b in doc.prose if b.word_count >= 15 and not _is_link_dump(b.text)]
@@ -300,7 +299,7 @@ def uniform_paragraph_length(doc: Document, settings: Settings) -> list[Finding]
     if cv >= _MIN_PARAGRAPH_CV:
         return []
     return [finding("CLR006", doc, blocks[0],
-                    f"paragraph-length variation {cv:.2f} over {len(blocks)} paragraphs (human prose ~0.5-0.7)")]
+                    f"paragraph-length variation {cv:.2f} over {len(blocks)} paragraphs (human prose 0.4-1.3)")]
 
 
 # Paragraphs of 3+ sentences whose last sentence opens with a conclusion word or says "which is why".
