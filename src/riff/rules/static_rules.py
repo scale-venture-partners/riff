@@ -225,3 +225,108 @@ def duplicate_paragraph(doc: Document, settings: Settings) -> list[Finding]:
         else:
             seen[key] = block
     return out
+
+
+# ---------------------------------------------------------------- rhythm metrics (CLR004-006)
+
+STYLOMETRY = "Desaire et al. 2023 (PMC10328544); Wikipedia, Signs of AI writing"
+
+# Calibrated on 43 human technical posts (pre-2022) and 16 AI drafts: human sentence-length CV 0.46-1.02 and
+# paragraph-length CV 0.40-1.28; no human post trips any limit here. AI drafts: 0.41-0.72 and 0.30-0.57.
+_MIN_SENTENCES, _MIN_SENTENCE_CV = 25, 0.45
+_MIN_PARAGRAPHS, _MIN_PARAGRAPH_CV = 8, 0.40
+_MIN_CONTRASTS, _MAX_CONTRASTS_PER_1000 = 3, 2.5
+
+_CONTRAST = re.compile(
+    r"\b(?:instead of|rather than|not (?:only|just) [^.;]{1,60}?,? but|not [^.;,]{1,40}, but)\b", re.I)
+
+
+def _is_link_dump(text: str) -> bool:
+    return text.count("·") >= 2 or text.count("](http") >= 2
+
+
+def _cv(values: list[int]) -> float:
+    mean = sum(values) / len(values)
+    return (sum((v - mean) ** 2 for v in values) / len(values)) ** 0.5 / mean
+
+
+@static_rule("CLR004", "repeated-contrast-frame", "Leans on 'X instead of Y' / 'not X but Y' framing",
+             category="Composition", source=f"{TROPES}; Wikipedia, Signs of AI writing",
+             explanation="One contrast frame is fine; a post that keeps defining its points against an alternative "
+             "('instead of', 'rather than', 'not just X, but Y') reads as generated. Counted per 1,000 words, "
+             "so it stays in code.",
+             examples=("We open one PR per epic instead of many. A reviewer sees one unit instead of fragments.",),
+             scope="document")
+def repeated_contrast_frame(doc: Document, settings: Settings) -> list[Finding]:
+    prose = [b for b in doc.prose if not _is_link_dump(b.text)]
+    total = sum(b.word_count for b in prose)
+    hits = [(b, m) for b in prose for m in _CONTRAST.finditer(b.text)]
+    if total == 0 or len(hits) < _MIN_CONTRASTS or len(hits) * 1000 / total <= _MAX_CONTRASTS_PER_1000:
+        return []
+    rate = len(hits) * 1000 / total
+    return [finding("CLR004", doc, b, f"contrast frame #{i} of {len(hits)} ({rate:.1f} per 1,000 words)",
+                    snippet=snippet_of(b.text[max(0, m.start() - 30): m.end() + 30]))
+            for i, (b, m) in enumerate(hits, 1)]
+
+
+@static_rule("CLR005", "uniform-sentence-length", "Sentence lengths are unusually even",
+             category="Composition", source=STYLOMETRY,
+             explanation="Human prose mixes short and long sentences; generated prose clusters in a narrow band. "
+             "Flags a coefficient of variation of sentence length below 0.45 over at least 25 sentences.",
+             examples=(), scope="document")
+def uniform_sentence_length(doc: Document, settings: Settings) -> list[Finding]:
+    lengths = [word_count(s.text) for b in doc.prose if not _is_link_dump(b.text) for s in split_sentences(b.text)]
+    lengths = [n for n in lengths if n > 0]
+    if len(lengths) < _MIN_SENTENCES:
+        return []
+    cv = _cv(lengths)
+    if cv >= _MIN_SENTENCE_CV:
+        return []
+    return [finding("CLR005", doc, doc.prose[0],
+                    f"sentence-length variation {cv:.2f} over {len(lengths)} sentences (human prose 0.5-1.0)")]
+
+
+@static_rule("CLR006", "uniform-paragraph-length", "Paragraph lengths are unusually even",
+             category="Composition", source=STYLOMETRY,
+             explanation="Human paragraphs vary more in length than generated ones. Flags a coefficient of variation "
+             "of paragraph length below 0.40 over at least 8 paragraphs of 15+ words.",
+             examples=(), scope="document")
+def uniform_paragraph_length(doc: Document, settings: Settings) -> list[Finding]:
+    blocks = [b for b in doc.prose if b.word_count >= 15 and not _is_link_dump(b.text)]
+    if len(blocks) < _MIN_PARAGRAPHS:
+        return []
+    cv = _cv([b.word_count for b in blocks])
+    if cv >= _MIN_PARAGRAPH_CV:
+        return []
+    return [finding("CLR006", doc, blocks[0],
+                    f"paragraph-length variation {cv:.2f} over {len(blocks)} paragraphs (human prose 0.4-1.3)")]
+
+
+# Paragraphs of 3+ sentences whose last sentence opens with a conclusion word or says "which is why".
+# Public human technical posts: 0-3% of paragraphs; an AI-written draft: 21%.
+_CLOSER_CUE = re.compile(r"^(?:so|both|each|every)\b|\b(?:which|that|this) is why\b", re.I)
+_MIN_CLOSER_PARAGRAPHS, _MIN_CLOSER_SHARE, _MIN_CLOSER_HITS = 6, 0.15, 3
+
+
+@static_rule("CLR007", "conclusion-closers", "Paragraphs keep closing on a 'So…' / 'which is why…' takeaway",
+             category="Composition", source="Wikipedia, Signs of AI writing (section summaries); tropes.fyi",
+             explanation="Closing a paragraph on a tidy takeaway is fine once. When 15% or more of paragraphs end on "
+             "a sentence that opens 'So', 'Both', 'Each', 'Every' or says 'which is why', the habit reads as "
+             "generated. A Jev judgment of the same idea did not separate human from AI posts, so this is a "
+             "narrow cue count.",
+             examples=("Both paths end at the same gate, which is why its speed matters on either one.",),
+             scope="document")
+def conclusion_closers(doc: Document, settings: Settings) -> list[Finding]:
+    paragraphs = []
+    for block in doc.prose:
+        sentences = split_sentences(block.text)
+        if len(sentences) >= 3 and block.word_count >= 40 and not _is_link_dump(block.text):
+            paragraphs.append((block, sentences[-1].text))
+    hits = [(b, last) for b, last in paragraphs if _CLOSER_CUE.search(last)]
+    if len(paragraphs) < _MIN_CLOSER_PARAGRAPHS or len(hits) < _MIN_CLOSER_HITS:
+        return []
+    share = len(hits) / len(paragraphs)
+    if share < _MIN_CLOSER_SHARE:
+        return []
+    return [finding("CLR007", doc, b, f"closing sentence is a takeaway ({len(hits)} of {len(paragraphs)} paragraphs)",
+                    snippet=snippet_of(last)) for b, last in hits]

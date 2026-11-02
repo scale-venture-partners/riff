@@ -123,3 +123,67 @@ def test_a_pull_quote_enclosing_its_block_is_not_decorative():
     assert len(inline) == 2, "quotes inside a sentence are still the tell"
     assert len(check(extract_markdown("\u201cAn opening quote that never closes"), Settings())) == 1
     assert check(extract_markdown("\u201c"), Settings()) == [], "a hanging quote set as its own box"
+
+
+def _paras(lengths):
+    return "\n\n".join(" ".join(["word"] * n) + "." for n in lengths)
+
+
+def test_contrast_frames_flagged_when_dense():
+    text = ("We ship one PR instead of many. We cache rather than recompute. "
+            "We fix the runner instead of the tests. " + "Filler words here. " * 20)
+    assert codes(text).count("CLR004") == 3
+
+
+def test_single_contrast_frame_is_fine():
+    assert "CLR004" not in codes("We ship one PR instead of many. " + "Filler words here. " * 60)
+
+
+def test_not_just_but_counts_as_contrast():
+    dense = "It is not just fast, but cheap. " * 3 + "Filler words here. " * 10
+    assert "CLR004" in codes(dense)
+
+
+def test_uniform_sentence_length_flagged():
+    assert "CLR005" in codes("This sentence has exactly seven words in it. " * 30)
+
+
+def test_varied_sentence_length_ok():
+    text = ("Short one. " + "This sentence runs on for quite a while longer than the short one before it ends. ") * 15
+    assert "CLR005" not in codes(text)
+
+
+def test_too_few_sentences_not_judged():
+    assert "CLR005" not in codes("This sentence has exactly seven words in it. " * 5)
+
+
+def test_uniform_paragraph_length_flagged():
+    assert "CLR006" in codes(_paras([40] * 9))
+
+
+def test_varied_paragraph_length_ok():
+    assert "CLR006" not in codes(_paras([20, 90, 35, 140, 25, 60, 200, 30, 80]))
+
+
+def test_too_few_paragraphs_not_judged():
+    assert "CLR006" not in codes(_paras([40] * 4))
+
+
+def _closer_para(last):
+    return ("The system runs jobs in a queue that workers drain in order. Each job is retried on failure up to five times. "
+            "Retries use exponential backoff with jitter so that load spreads out across the cluster. " + last)
+
+
+def test_conclusion_closers_flagged_when_common():
+    text = "\n\n".join([_closer_para("So the queue stays small."), _closer_para("Both paths end at one gate."),
+                        _closer_para("That is why retries matter.")] + [_closer_para("Latency fell to 92 seconds.")] * 4)
+    assert codes(text).count("CLR007") == 3
+
+
+def test_conclusion_closers_rare_is_fine():
+    text = "\n\n".join([_closer_para("So the queue stays small.")] + [_closer_para("Latency fell to 92 seconds.")] * 9)
+    assert "CLR007" not in codes(text)
+
+
+def test_conclusion_closers_needs_enough_paragraphs():
+    assert "CLR007" not in codes("\n\n".join([_closer_para("So it works.")] * 3))

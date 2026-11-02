@@ -7,6 +7,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Rhythm rules for polished AI prose that has no classic tropes: `CLR004` repeated contrast frame
+  ("instead of", "rather than", "not just X, but Y"), `CLR005` uniform sentence length, and `CLR006`
+  uniform paragraph length, plus `CLR007` paragraphs that keep closing on a "So…" or "which is why…"
+  takeaway. Thresholds are calibrated on public human technical posts.
 - OpenAI Decisions API support: `--model openai:gpt-6-luna` (reads `OPENAI_API_KEY`, and
   `OPENAI_BASE_URL` to override the host). Yes/no rules are sent as `predicate` questions and the
   document-type classifier as a `choice` question. Thresholds are still tuned to Jev.
