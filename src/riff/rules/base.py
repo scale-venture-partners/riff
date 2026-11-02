@@ -65,6 +65,10 @@ class Rule:
     # only on a paragraph: word choice, inflated stakes, boilerplate. Rules about discourse (a preamble,
     # a quotable line, a tie-back) need sentences around them and are asked only of full paragraphs.
     fragments: bool = False
+    # Aggregate Jev rules: the tell is the ABSENCE of a pattern across paragraphs. The block question is asked of
+    # every paragraph and no paragraph is flagged; the document is flagged once when at most this share of
+    # paragraphs answers above the threshold (needs AGGREGATE_MIN_BLOCKS judged paragraphs).
+    share_below: float | None = None
     # Static rules: a checker over a Document and the active Settings.
     check: Checker | None = field(default=None, compare=False)
     # True for rules declared by a user in riff.toml, not shipped with riff.
@@ -206,6 +210,7 @@ def jev_rule(
     applies_to: tuple[str, ...] = (),
     skip_for: tuple[str, ...] = (),
     fragments: bool = False,
+    share_below: float | None = None,
 ) -> Rule:
     return register(
         Rule(
@@ -226,6 +231,7 @@ def jev_rule(
             applies_to=applies_to,
             skip_for=skip_for,
             fragments=fragments,
+            share_below=share_below,
         )
     )
 

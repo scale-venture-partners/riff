@@ -35,7 +35,7 @@ def main() -> None:
     root = Path(sys.argv[1])
     rules = tuple(sys.argv[2:]) or DEFAULT_RULES
     load_rules()
-    settings = Settings(jev=False, classify=False, select=rules)
+    settings = Settings(jev=any(r.startswith('JEV') for r in rules), classify=False, select=rules)
     fires: dict[str, dict[str, list[str]]] = defaultdict(lambda: defaultdict(list))
     n = defaultdict(int)
     cvs: dict[str, list[tuple[float, str]]] = defaultdict(list)
@@ -55,7 +55,8 @@ def main() -> None:
     for code in ("CLR004", "CLR005", "CLR006", "CLR007"):
         for label in union:
             union[label] |= set(fires[code][label])
-    print(f"rhythm rules (CLR004-007) combined: human {len(union['human'])}/{n['human']}, ai {len(union['ai'])}/{n['ai']}")
+    print(f"rhythm rules (CLR004-007) combined: human {len(union['human'])}/{n['human']}, "
+          f"ai {len(union['ai'])}/{n['ai']}")
     print(f"documents: human={n['human']} ai={n['ai']}")
     print(f"{'rule':8} {'human':>10} {'ai':>10}")
     for code in rules:
@@ -64,6 +65,10 @@ def main() -> None:
     for label in ("human", "ai"):
         vals = sorted(cvs[label])
         print(f"\nsection CV, {label} (n={len(vals)}): " + ", ".join(f"{v}" for v, _ in vals))
+    flagged = {label: set().union(*(set(fires[c][label]) for c in rules)) for label in ("human", "ai")}
+    all_ai = {p.name for p in (root / "ai").glob("*") if p.suffix in (".md", ".html", ".txt")}
+    print(f"\nany selected rule: human {len(flagged['human'])}/{n['human']}, ai {len(flagged['ai'])}/{n['ai']}")
+    print("ai docs no rule flags: " + (", ".join(sorted(all_ai - flagged["ai"])) or "none"))
     for code in rules:
         if fires[code]["human"]:
             print(f"\n{code} fired on human: {', '.join(fires[code]['human'][:8])}")

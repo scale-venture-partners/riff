@@ -216,6 +216,7 @@ async def run_jev(doc: Document, codes: list[str], settings: Settings, *, debug:
     findings: list[Finding] = []
     sem = asyncio.Semaphore(settings.jev_concurrency)
     questions = {}
+    aggregate: dict[str, list[float]] = {}
 
     async def one(unit: Unit) -> list[Finding]:
         if unit.tokens > _MAX_STATE_TOKENS:
@@ -243,11 +244,35 @@ async def run_jev(doc: Document, codes: list[str], settings: Settings, *, debug:
                 a = resp.answers.get(c)
                 if a is not None and hasattr(a, "noul"):
                     stats["probabilities"].append((unit.anchor.line, c, round(float(a.noul), 3)))
-        return _findings_for_block(doc, unit.anchor, resp, unit.codes, settings, snippet=unit.snippet)
+        per_block = [c for c in unit.codes if REGISTRY[c].share_below is None]
+        for c in unit.codes:
+            a = resp.answers.get(c)
+            if REGISTRY[c].share_below is not None and a is not None and hasattr(a, "noul"):
+                aggregate.setdefault(c, []).append(float(a.noul))
+        return _findings_for_block(doc, unit.anchor, resp, per_block, settings, snippet=unit.snippet)
 
     for result in await asyncio.gather(*(one(u) for u in units)):
         findings.extend(result)
+    for code, probs in aggregate.items():
+        findings.extend(aggregate_findings(doc, code, probs, settings))
     return findings, stats
+
+
+AGGREGATE_MIN_BLOCKS = 8
+
+
+def aggregate_findings(doc: Document, code: str, probs: list[float], settings: Settings) -> list[Finding]:
+    """One document-level finding when a pattern is nearly absent across the paragraphs judged."""
+    rule = REGISTRY[code]
+    if len(probs) < AGGREGATE_MIN_BLOCKS:
+        return []
+    hits = sum(p >= settings.threshold_for(code) for p in probs)
+    if hits / len(probs) > rule.share_below:
+        return []
+    anchor = doc.prose[0]
+    return [Finding(code=code, message=f"{rule.summary.rstrip('.')} ({hits} of {len(probs)} paragraphs differ)",
+                    path=doc.path, line=anchor.line, col=anchor.col, snippet="", label=anchor.label,
+                    probability=None, severity=rule.severity)]
 
 
 def _findings_for_block(doc: Document, block: Block, resp, codes: list[str], settings: Settings,

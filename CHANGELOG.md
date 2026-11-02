@@ -6,7 +6,19 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+- Main-content extraction crashed on nested elements with chrome roles.
+
 ### Added
+- Structure rules. Hard norms from the Google and APA style guides: `RIF006` heading hierarchy (skipped
+  levels, lone subsection, second h1), `RIF007` heading form (numbered, linked or emoji headings),
+  `RIF008` changelog shape (Keep a Changelog), `RIF009` single-item list. Statistics: `CLR008` uniform
+  section size and `CLR009` overlong paragraph (both off by default, they did not separate human from AI
+  writing), `CLR010` bold density, `CLR011` wall of text, `CLR012` slide load (off by default).
+- `JEV013` uniform front-loading: AI drafts state the point in the first sentence of nearly every
+  paragraph, human posts do not. It is the first aggregate Jev rule: the block question is asked of every
+  paragraph and the document is flagged once (`share_below`).
+- `scripts/bench_structure.py` benchmarks rules over a labelled human/AI corpus.
 - Rhythm rules for polished AI prose that has no classic tropes: `CLR004` repeated contrast frame
   ("instead of", "rather than", "not just X, but Y"), `CLR005` uniform sentence length, and `CLR006`
   uniform paragraph length, plus `CLR007` paragraphs that keep closing on a "So…" or "which is why…"

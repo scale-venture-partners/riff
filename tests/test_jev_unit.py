@@ -49,3 +49,14 @@ async def test_run_jev_missing_key_raises(monkeypatch):
     doc = extract_markdown("Some prose here for the test that has enough words to be a target.")
     with pytest.raises(JevUnavailable, match="TYPESAFE_API_KEY"):
         await run_jev(doc, ["JEV001"], Settings())
+
+
+def test_aggregate_flags_when_pattern_is_absent():
+    from riff.jev import aggregate_findings
+
+    doc = extract_markdown("A paragraph of text to anchor findings on.")
+    settings = Settings()
+    out = aggregate_findings(doc, "JEV013", [0.1] * 11 + [0.9], settings)  # 1 of 12 differs: 8% <= 10%
+    assert [f.code for f in out] == ["JEV013"] and "1 of 12" in out[0].message
+    assert aggregate_findings(doc, "JEV013", [0.1] * 8 + [0.9] * 4, settings) == []  # 33% differ: human-like
+    assert aggregate_findings(doc, "JEV013", [0.1] * 5, settings) == []  # too few paragraphs to judge

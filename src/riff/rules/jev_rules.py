@@ -160,6 +160,21 @@ jev_rule(
     },
 )
 
+jev_rule(
+    "JEV013", "uniform-front-loading", "Every paragraph opens by stating its point, with no digression or build-up",
+    category="Composition", source="Corpus calibration; NN/g front-loading (the inverse is the human norm)",
+    threshold=0.65, share_below=0.10, applies_to=("blog_post", "essay", "article"),
+    explanation="Human prose wanders: roughly a quarter of paragraphs set up, digress, or reach their point late. "
+    "AI drafts state the point in the first sentence of nearly every paragraph. Asked of every paragraph; the "
+    "document is flagged once when 10% or fewer paragraphs open with setup. Gated to blog posts, essays and "
+    "articles, where front-loading everywhere is a tell; in memos, reports and docs it is the advice.",
+    examples=("Every paragraph opens with its topic sentence and spends the rest supporting it.",),
+    question={
+        "question": "Does this paragraph open with background, setup or an aside, with its main point arriving only "
+        "in a later sentence, instead of stating its point in the first sentence?",
+    },
+)
+
 # ---------------------------------------------------------------- tone / voice (JEV1xx)
 
 jev_rule(

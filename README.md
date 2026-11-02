@@ -272,7 +272,7 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 
 ## Rules
 
-73 rules (61 semantic, 12 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
+83 rules (62 semantic, 21 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
 
 ### CLR — Clarity metrics (arithmetic Jev can't do)
 
@@ -285,6 +285,11 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `CLR005` | uniform-sentence-length |   | static | document | Sentence lengths are unusually even | Desaire et al. 2023 (PMC10328544); Wikipedia, Signs of AI writing |
 | `CLR006` | uniform-paragraph-length |   | static | document | Paragraph lengths are unusually even | Desaire et al. 2023 (PMC10328544); Wikipedia, Signs of AI writing |
 | `CLR007` | conclusion-closers |   | static | document | Paragraphs keep closing on a 'So…' / 'which is why…' takeaway | tropes.fyi |
+| `CLR008` | uniform-section-size | · | static | document | Sections are all about the same length | Corpus calibration (human technical posts vs AI drafts) |
+| `CLR009` | paragraph-too-long | · | static | document | Paragraph runs past the sentence limit | Google developer documentation style guide: paragraphs |
+| `CLR010` | bold-density |   | static | document | Too much of the prose is bold | Nielsen Norman Group: formatting long-form content |
+| `CLR011` | wall-of-text |   | static | document | A long document with no headings and no lists | Nielsen Norman Group: how users read on the web; Microsoft scannable content |
+| `CLR012` | slide-load | · | static | document | A slide carries too many words or bullets, or its title is too short or long | Alley, The Craft of Scientific Presentations (assertion-evidence) |
 
 ### JEV — Semantic rules (Jev model) — the bulk of the catalog
 
@@ -301,6 +306,7 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV009` | never-ending-conclusion | · | Jev | block | The ending stacks clause after clause instead of stopping | tropes.fyi |
 | `JEV010` | formulaic-structure |   | Jev | document | Follows a formulaic template, hitting every expected beat in order | tropes.fyi |
 | `JEV011` | revision-artifact |   | Jev | block | Leaves a note about its own edits that the final reader doesn't need | Observed in AI-edited slides and docs |
+| `JEV013` | uniform-front-loading |   | Jev | block | Every paragraph opens by stating its point, with no digression or build-up | Corpus calibration; NN/g front-loading (the inverse is the human norm) |
 | `JEV101` | stakes-inflation |   | Jev | block | Inflates ordinary stakes to world-historical significance | tropes.fyi |
 | `JEV102` | invented-concept-label |   | Jev | block | Coins an abstract term as if it were established | tropes.fyi |
 | `JEV103` | quotable-bait |   | Jev | block | A standalone quotable line that carries no real information | tropes.fyi |
@@ -361,6 +367,10 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `RIF003` | bold-first-bullets |   | static | document | Most list items open with a bold lead-in | tropes.fyi |
 | `RIF004` | revision-badge |   | static | block | Note about an edit ("+2 added", "updated to include") left in the text | Observed in AI-edited slides and docs |
 | `RIF005` | out-of-order-parts |   | static | section | A numbered step or part comes after a later one | Minto, The Pyramid Principle |
+| `RIF006` | heading-hierarchy |   | static | document | Heading levels skip, a section has one subsection, or h1 repeats | Google developer documentation style guide: headings; APA Style: headings |
+| `RIF007` | heading-form |   | static | document | Heading carries a number prefix, a link, or a leading emoji | Google developer documentation style guide: headings; Wikipedia, Signs of AI writing |
+| `RIF008` | changelog-shape |   | static | document | Changelog departs from the Keep a Changelog layout | Keep a Changelog 1.1.0 |
+| `RIF009` | single-item-list |   | static | document | A list with one item | Google developer documentation style guide: lists |
 
 ## Sources
 
