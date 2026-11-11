@@ -22,16 +22,19 @@ HEAD = """\
 # riff
 
 [![CI](https://github.com/scale-venture-partners/riff/actions/workflows/ci.yml/badge.svg)](https://github.com/scale-venture-partners/riff/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/riff-lint.svg)](https://pypi.org/project/riff-lint/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A small, fast prose linter. It reads a document, flags the writing tells and clarity
 problems it finds, and reports them with **ruff-style rule codes** you can select, ignore,
-and configure. Static rules are pure Python and run in milliseconds; the semantic rules are
-one call each to [TypeSafe's **Jev**](https://typesafe.ai) model, which returns a calibrated
-probability per judgment instead of generated text.
+and configure. Static rules are pure Python and run in milliseconds. The semantic rules are yes/no
+questions for [TypeSafe's **Jev**](https://typesafe.ai), a decision model that returns a calibrated
+probability per judgment instead of generated text; every rule asked about the same paragraph (or
+section, or document) shares one call.
 
 ```console
 $ riff draft.md
+draft.md: type: blog_post (0.91)
 draft.md:1:1: RIF002 heading is Title Case; use sentence case
     Understanding The Impact Of Modern Technology
 draft.md:3:1: JEV001 Announces what it is about to say instead of saying it p=0.92
@@ -41,48 +44,42 @@ draft.md:5:1: JEV301 Overused AI filler vocabulary used as filler p=0.88
 draft.md:9:1: JEV103 A standalone quotable line that carries no real information p=0.79
     Every metric that rewards volume punishes leverage.
 
-12 findings in 1 file (JEV301 ×3, JEV001 ×2, RIF002 ×1).
-Jev: 14 calls, 9,210 input tokens (~$0.0004)
+4 findings in 1 file (RIF002 ×1, JEV001 ×1, JEV301 ×1, JEV103 ×1).
+jev-latest: 14 calls, 9,210 input tokens (~$0.0004)
 ```
 
 ## Install
 
-riff is **not on PyPI yet**, so install it from source. It uses
-[uv](https://docs.astral.sh/uv/).
+riff is on PyPI as [`riff-lint`](https://pypi.org/project/riff-lint/) (the name `riff` was taken)
+and installs a `riff` command. It needs Python 3.11 or later.
 
-**Clone and run:**
+```console
+uv tool install riff-lint     # or: pipx install riff-lint, or pip install riff-lint
+riff --help
+uvx --from riff-lint riff draft.md   # run once without installing
+```
+
+The PyPI release can lag `main`; compare `riff --version` with the [changelog](CHANGELOG.md). To
+run the latest code from GitHub:
+
+```console
+uv tool install git+https://github.com/scale-venture-partners/riff
+uvx --from git+https://github.com/scale-venture-partners/riff riff draft.md
+```
+
+To work on riff itself, clone it and use [uv](https://docs.astral.sh/uv/):
 
 ```console
 git clone https://github.com/scale-venture-partners/riff
 cd riff
 uv sync
-uv run riff --help
 uv run riff draft.md
 ```
 
-**Run directly from GitHub, no clone,** with uvx (the repo is private, so this uses
-your existing GitHub credentials via git):
-
-```console
-uvx --from git+https://github.com/scale-venture-partners/riff riff draft.md
-# SSH works too, if that's how you authenticate to GitHub:
-uvx --from git+ssh://git@github.com/scale-venture-partners/riff riff draft.md
-```
-
-To install it as a persistent `riff` command on your PATH from the repo:
-
-```console
-uv tool install git+https://github.com/scale-venture-partners/riff
-riff --help
-```
-
-When riff is published to PyPI, `uv tool install riff-lint` will install the same
-`riff` command (the `riff` name itself is taken on PyPI).
-
 ## Usage
 
-The examples below assume `riff` is on your PATH (via `uv tool install` above). From a
-clone without installing, prefix each with `uv run` (e.g. `uv run riff draft.md`).
+The examples below assume `riff` is on your PATH. From a clone, prefix each with `uv run`
+(`uv run riff draft.md`).
 
 ```console
 riff draft.md                    # lint one file (positional)
@@ -92,25 +89,34 @@ riff https://example.com/blog/post  # fetch a web page and lint just its article
 riff draft.md --no-jev           # static rules only, no API key needed
 riff draft.md --select JEV,RIF   # only these codes/prefixes
 riff draft.md --ignore JEV002    # keep defaults, drop one rule
+riff draft.md --extend-select JEV401  # keep defaults, add an off-by-default rule
 riff draft.md --debug-jev        # print every Jev probability, to tune thresholds
 riff email.txt --type email      # force the document type (skips classification)
 riff draft.md --no-classify      # don't classify; type-specific rules run everywhere
+riff draft.md --model openai:gpt-6-luna  # another decision model (see below)
 riff draft.md --format json      # machine-readable output
+riff draft.md -q                 # findings only, no summary line
+riff draft.md --config ci/riff.toml  # use this config instead of discovering one
+riff --outline deck.pptx         # print the sections, titles and blocks riff reads, and exit
 riff --list-rules                # the full catalog
 riff --explain JEV001            # one rule in detail
 riff --compare draft.md edited.md  # check an edit kept every claim
 ```
 
-**Supported formats:** Markdown (`.md`), plain text (`.txt`), HTML (`.html`), Word (`.docx`),
-PowerPoint (`.pptx`). Findings report a line and column for text formats, and a paragraph or
-slide label for Office formats.
+`riff --help` lists every flag. Color is on in a terminal; `--no-color` or `NO_COLOR=1` turns it off.
+
+**Supported formats:** Markdown (`.md`, `.markdown`), plain text (`.txt`, `.text`), HTML (`.html`,
+`.htm`), Word (`.docx`), PowerPoint (`.pptx`). Findings report a line and column for text formats,
+and a paragraph or slide label for Office formats.
 
 **URLs:** pass an `http(s)` URL to fetch the page and lint only its article body. riff picks the
 largest `<article>`, else `<main>`, else `<body>`, drops navigation, headers, footers, and sidebars,
 and narrows to the block that holds most of the paragraph text. Findings are labelled `block N`
 (position in the extracted body), since fetched HTML is often minified onto one line.
 
-**Exit codes:** `0` clean, `1` findings, `2` usage or file error.
+**Exit codes:** `0` clean, `1` findings, `2` a usage or file error, a missing API key, or a Jev
+request that failed (a lint with failed requests is incomplete, so it is never reported as clean).
+`--compare` uses the same codes: `1` means the rewrite lost or added something.
 
 ### Checking an edit
 
@@ -126,30 +132,35 @@ the source. Ported from the [declauding](https://github.com/oaustegard/claude-sk
 
 ## The Jev-backed rules
 
-The semantic rules need a TypeSafe API key. Set `TYPESAFE_API_KEY` in the environment (create
-one at <https://console.typesafe.ai/>). Without it, `--no-jev` runs the static rules alone; if
-you select a Jev rule with no key, riff stops and tells you the two ways to fix it rather than
-degrading silently.
+The semantic rules, and the document-type classifier, need a decision model. The default is Jev: set
+`TYPESAFE_API_KEY` in the environment (create one at <https://console.typesafe.ai/>). Without a key,
+`riff draft.md` stops with exit code `2` and says how to fix it, rather than quietly running fewer
+rules; `riff draft.md --no-jev` runs the static rules alone, and `--type` sets the document type
+without a classification call.
 
 ### Other decision models
 
 Jev is the default, but riff runs on any *decision model*: one that returns a calibrated
-probability per yes/no question instead of generated text. Language models such as GPT or Claude
-are not decision models and are rejected. riff talks to them through
-[Pydantic AI's decision models](https://pydantic.dev/docs/ai/models/decision/):
+probability per yes/no question instead of generated text. Chat and completion models (GPT, Claude,
+and the like) are not decision models, and riff rejects them. riff talks to decision models through
+[Pydantic AI's decision models](https://pydantic.dev/docs/ai/models/decision/), plus OpenAI's
+Decisions API directly:
 
 ```console
 riff draft.md                                  # Jev, TYPESAFE_API_KEY
 riff draft.md --model typesafe:jev-latest      # the same, spelled out
+riff draft.md --model openai:gpt-6-luna        # OpenAI's Decisions API, OPENAI_API_KEY
 export SYSTEM_ONE_BASE_URL=http://localhost:8000   # any server that speaks POST /v1/systemone
 riff draft.md --model system-one:laya          # Laya, CLM, an Ollama decision model...
 ```
 
-Set `SYSTEM_ONE_API_KEY` too if the server needs one. **Thresholds are tuned to Jev.** Another
-model's probabilities sit on a different scale, so check its findings with `--debug-jev` and set
-`[thresholds]` for it before trusting the output. Small-context models (Ollama's `tev1` reads about
-2,000 tokens) cannot hold riff's full rule set; riff warns when a prompt overflows, and `--select`
-asks fewer rules per run.
+`OPENAI_BASE_URL` overrides the OpenAI host, and `SYSTEM_ONE_API_KEY` is sent if a System One
+server needs one. Set the model for a project with `model = "openai:gpt-6-luna"` in `riff.toml`.
+
+**Thresholds are tuned to Jev.** Another model's probabilities sit on a different scale, so check
+its findings with `--debug-jev` and set `[thresholds]` for it before trusting the output.
+Small-context models (Ollama's `tev1` reads about 2,000 tokens) cannot hold riff's full rule set;
+riff warns when a prompt overflows, and `--select` asks fewer rules per run.
 
 Each Jev rule is one yes/no (Noul) question asked about one part of the document: a paragraph for
 most rules, or a sentence, a title, a section, or the whole document (see below). It is phrased so a
@@ -217,8 +228,12 @@ file's directory upward. Command-line flags override the file. `select`/`ignore`
 select = ["RIF", "CLR", "JEV"]          # omit to use every default-on rule
 ignore = ["JEV002"]                      # drop reasoning-leak (noisy on reflective writing)
 extend-select = ["JEV401"]               # turn on a default-off rule (passive voice)
+extend-ignore = ["CLR001"]               # drop a rule on top of `select`/`ignore`
 jev = true                               # set false to skip semantic rules
-model = "jev-latest"
+model = "jev-latest"                     # or "openai:gpt-6-luna", "system-one:<name>"
+classify = true                          # set false to skip document-type classification
+# type = "memo"                          # force the document type for every file under this config
+jev-concurrency = 8                      # Jev requests in flight at once
 max-sentence-words = 40                  # CLR001 threshold
 max-reading-grade = 12                   # CLR002 threshold
 jev-min-words = 4                        # shortest paragraph or sentence sent to Jev (default 8; 4 for .pptx)
@@ -254,10 +269,11 @@ The type identifiers are: `sms`, `email`, `chat_message`, `memo`, `letter`, `ess
 
 The built-in rules are deliberately generic. Anything specific to your team,
 house style, or domain you add in your own `riff.toml` with `[[custom_rules]]`. No
-code changes, no fork. Two kinds:
+code changes, no fork. Three kinds: `jev` (a question for the model), `phrase` (literal strings,
+offline) and `regex` (a pattern, offline).
 
 ```toml
-# A Jev rule: a yes/no question asked about your text (needs TYPESAFE_API_KEY).
+# A Jev rule: a yes/no question asked about your text (needs a decision model, as above).
 [[custom_rules]]
 code = "TEAM001"
 name = "no-competitor-names"
@@ -309,52 +325,52 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 SOURCES = """\
 ## Sources
 
-The rule set comes from tropes.fyi, Williams, and Strunk & White:
+The general catalog draws on:
 
-- AI writing tells, from [tropes.fyi](https://tropes.fyi/tropes-md): negative parallelism,
-  em-dash addiction, magic adverbs, signposted conclusions, and the rest.
-- Clarity and grace, from Joseph M. Williams, *Style: Lessons in Clarity and Grace*: wordy
-  phrases, nominalizations, passive voice, sentence length, and readability.
-- The Elements of Style, by Strunk & White: put statements in positive form, use concrete
-  language, cut weak intensifiers, avoid loose-sentence chains, and keep parallel form.
+- AI writing tells from [tropes.fyi](https://tropes.fyi/tropes-md) and Wikipedia's
+  [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing): negative
+  parallelism, magic adverbs, signposted conclusions, and the rest.
+- Joseph M. Williams, *Style: Lessons in Clarity and Grace*: wordy phrases, nominalizations, passive
+  voice, sentence length, and readability.
+- Strunk & White, *The Elements of Style*: positive form, concrete language, weak intensifiers,
+  loose-sentence chains, and parallel form.
+- The [declauding](https://github.com/oaustegard/claude-skills) register (Oskar Austegard, MIT):
+  flat certainty, compressed syntax, staged closers, and doc headings; with the corpus figures it
+  cites from Louis Abraham's [load-bearing](https://github.com/louisabraham/load-bearing) study of
+  GitHub pull request descriptions, and Clark, Martin & Mahowald (arXiv 2610.29162) on compressed
+  syntax in model output.
+- Stylometry for the rhythm rules: Desaire et al. 2023 on sentence- and paragraph-length variation,
+  with thresholds calibrated on public human technical posts.
+- Structure norms from the Google developer documentation style guide, APA Style, Nielsen Norman
+  Group, and Keep a Changelog.
 
 Almost every tell is a Jev judgment: pattern-matching misses paraphrases and fires on look-alikes,
 so anything that depends on meaning or context is a model question, not a regex. Only what Jev
-genuinely cannot do stays in code — exact glyphs it never sees (curly quotes, arrows), structural
-facts in markup, cross-document duplicate detection, and arithmetic metrics (sentence length, grade).
+cannot do stays in code: exact glyphs it never sees (curly quotes, arrows), structural facts in
+markup, comparison across paragraphs, and arithmetic (sentence length, reading grade, rates).
 
-### Sources by document type
+### Rules by document type
 
-The type-specific rules are mined from a style text per document type — Minto for reports, Ogilvy
-for marketing, Hargis for docs, and so on. Where a form has no single canonical work, we cite the recognized guide or
-convention. A rule may cite more than one source, and these overlap with the general catalog above.
+Rules gated to particular kinds of writing, and the sources they cite (generated from the catalog).
+Every other rule runs on every type, apart from types it explicitly skips.
 
-| Type | Source(s) mined |
-|---|---|
-| essay, book_chapter | Zinsser, *On Writing Well*; King, *On Writing* |
-| article, press_release | *AP Stylebook*; Kovach & Rosenstiel, *The Elements of Journalism* |
-| report, memo | Minto, *The Pyramid Principle*; Garner, *HBR Guide to Better Business Writing* |
-| academic_paper | Sword, *Stylish Academic Writing*; Williams, *Style* |
-| documentation | Hargis et al., *Developing Quality Technical Information* (IBM); Microsoft / Google style guides |
-| marketing_copy, product_description | Ogilvy, *Ogilvy on Advertising*; Bly, *The Copywriter's Handbook* |
-| script | McKee, *Story*; Field, *Screenplay* |
-| poem | Oliver, *A Poetry Handbook*; Fry, *The Ode Less Travelled* |
-| release_notes | *Keep a Changelog*; *Semantic Versioning* |
-| email, letter | Shipley & Schwalbe, *Send*; Garner, *HBR Guide* |
-| blog_post, social_post | Handley, *Everybody Writes* |
-| review | Barnet, *A Short Guide to Writing About …* |
-| sms, chat_message | Crystal, *Txtng: The Gr8 Db8*; McCulloch, *Because Internet* (descriptive, not prescriptive) |
-| resume | conventions: strong action verbs, quantified results, no first person |
-| presentation | Alley, *The Craft of Scientific Presentations* (assertion-evidence); Minto, *The Pyramid Principle* |
+"""
 
+
+DEV = """\
 ## Development
 
 ```console
 uv sync
-uv run pytest            # static tests run offline; live Jev tests skip without a key
-uv run ruff check src tests
-uv run python scripts/gen_readme.py   # regenerate the rule table below
+uv run ruff check src tests scripts   # lint, as CI runs it
+uv run pytest --cov                   # tests; coverage floor 90%. Live Jev tests skip without a key
+uv run python scripts/gen_readme.py   # regenerate this README from the rule catalog
+uv run python scripts/probe_rules.py JEV123         # a Jev rule's probability on its own examples
+uv run python scripts/bench_structure.py CORPUS_DIR # offline rules over a human/AI corpus
 ```
+
+Edit `scripts/gen_readme.py`, not `README.md`: the README is generated, so a hand edit is
+overwritten on the next run.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how rules work and how to add one.
 
@@ -394,8 +410,29 @@ def rule_table() -> str:
     return "\n".join(lines)
 
 
+def type_table() -> str:
+    """Each type's gated rules and their sources, so the table cannot claim a source no rule cites."""
+    from riff.doctype import TYPE_NAMES
+
+    load_rules()
+    lines = ["| Type | Rules | Sources |", "|---|---|---|"]
+    for name in TYPE_NAMES:
+        rules = [r for r in REGISTRY.values() if name in r.applies_to and not r.custom]
+        if not rules:
+            continue
+        sources: list[str] = []
+        for r in rules:
+            for part in r.source.split(";"):
+                part = part.strip()
+                if part and part not in sources:
+                    sources.append(part)
+        codes = ", ".join(f"`{r.code}`" for r in rules)
+        lines.append(f"| {name} | {codes} | {'; '.join(sources)} |")
+    return "\n".join(lines) + "\n\n"
+
+
 def main() -> None:
-    readme = HEAD + rule_table() + "\n" + SOURCES
+    readme = HEAD + rule_table() + "\n" + SOURCES + type_table() + DEV
     (ROOT / "README.md").write_text(readme)
     print(f"wrote README.md ({len(readme)} bytes, {len(REGISTRY)} rules)")
 

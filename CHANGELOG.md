@@ -8,6 +8,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 - Main-content extraction crashed on nested elements with chrome roles.
+- README: install from PyPI (`riff-lint`); the repository is public; document the OpenAI Decisions API
+  backend, the `extend-ignore`, `classify`, `type` and `jev-concurrency` settings, and the flags the usage
+  list left out; the by-type source table is now generated from the rules, so it lists only sources a
+  rule cites. The example `riff.toml` no longer names a `WRD` rule prefix that does not exist.
 
 ### Added
 - Rules ported from the [declauding](https://github.com/oaustegard/claude-skills) register (Austegard,
