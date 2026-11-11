@@ -19,7 +19,8 @@ from riff.rules import load_rules
 from riff.rules.structure_rules import peer_sections, section_words
 from riff.settings import Settings
 
-DEFAULT_RULES = ("CLR004", "CLR005", "CLR006", "CLR007", "RIF006", "RIF007", "RIF009", "CLR008", "CLR009", "CLR010")
+DEFAULT_RULES = ("CLR004", "CLR005", "CLR006", "CLR007", "RIF006", "RIF007", "RIF009", "CLR008", "CLR009", "CLR010",
+                 "CLR013", "CLR014", "CLR015", "RIF010")
 
 
 def metrics(doc) -> dict[str, float]:
