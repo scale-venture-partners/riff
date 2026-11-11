@@ -98,6 +98,7 @@ riff draft.md --no-classify      # don't classify; type-specific rules run every
 riff draft.md --format json      # machine-readable output
 riff --list-rules                # the full catalog
 riff --explain JEV001            # one rule in detail
+riff --compare draft.md edited.md  # check an edit kept every claim
 ```
 
 **Supported formats:** Markdown (`.md`), plain text (`.txt`), HTML (`.html`), Word (`.docx`),
@@ -110,6 +111,18 @@ and narrows to the block that holds most of the paragraph text. Findings are lab
 (position in the extracted body), since fetched HTML is often minified onto one line.
 
 **Exit codes:** `0` clean, `1` findings, `2` usage or file error.
+
+### Checking an edit
+
+Fixing what riff flags is an edit to how a draft sounds, and it should not change what the draft claims.
+The two ways that goes wrong, a claim dropped or a fact invented, both read fluently afterwards.
+`riff --compare SOURCE REWRITE` compares the two versions and reports every number, name, quotation, code
+span and link target the rewrite lost or added, plus any drop in superlative ("the single most"), scope
+("every", "only"), negation and hedge ("roughly") constructions. It exits `1` when it finds something;
+`--waive TOKEN` silences a finding that is a rephrasing, and `--format json` gives machine-readable output.
+It is lexical on purpose: an embedding scores a rewrite that dropped a ranking word as nearly identical to
+the source. Ported from the [declauding](https://github.com/oaustegard/claude-skills) skill's
+`declaude_diff.py`.
 
 ## The Jev-backed rules
 

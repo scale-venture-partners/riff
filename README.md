@@ -77,6 +77,7 @@ riff draft.md --no-classify      # don't classify; type-specific rules run every
 riff draft.md --format json      # machine-readable output
 riff --list-rules                # the full catalog
 riff --explain JEV001            # one rule in detail
+riff --compare draft.md edited.md  # check an edit kept every claim
 ```
 
 **Supported formats:** Markdown (`.md`), plain text (`.txt`), HTML (`.html`), Word (`.docx`),
@@ -89,6 +90,18 @@ and narrows to the block that holds most of the paragraph text. Findings are lab
 (position in the extracted body), since fetched HTML is often minified onto one line.
 
 **Exit codes:** `0` clean, `1` findings, `2` usage or file error.
+
+### Checking an edit
+
+Fixing what riff flags is an edit to how a draft sounds, and it should not change what the draft claims.
+The two ways that goes wrong, a claim dropped or a fact invented, both read fluently afterwards.
+`riff --compare SOURCE REWRITE` compares the two versions and reports every number, name, quotation, code
+span and link target the rewrite lost or added, plus any drop in superlative ("the single most"), scope
+("every", "only"), negation and hedge ("roughly") constructions. It exits `1` when it finds something;
+`--waive TOKEN` silences a finding that is a rephrasing, and `--format json` gives machine-readable output.
+It is lexical on purpose: an embedding scores a rewrite that dropped a ranking word as nearly identical to
+the source. Ported from the [declauding](https://github.com/oaustegard/claude-skills) skill's
+`declaude_diff.py`.
 
 ## The Jev-backed rules
 
@@ -272,12 +285,15 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 
 ## Rules
 
-83 rules (62 semantic, 21 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
+107 rules (82 semantic, 25 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
 
 ### CLR — Clarity metrics (arithmetic Jev can't do)
 
 | Code | Rule | On | Kind | Level | What it flags | Source |
 |------|------|----|------|-------|---------------|--------|
+| `CLR013` | flat-certainty-register | · | static | document | Prose is dense with the vocabulary of the flat-certainty register | Abraham, load-bearing PR-description corpus, via declauding references/corpus.md; declauding (Austegard, github.com/oaustegard/claude-skills), entries 43-47 |
+| `CLR014` | echoed-skeleton | · | static | document | Consecutive sentences built on the same word-for-word skeleton | declauding (Austegard, github.com/oaustegard/claude-skills), entry 26 (forced triad, third shape) |
+| `CLR015` | anaphora-run | · | static | document | Three sentences or clauses in a row open on the same two words | declauding (Austegard, github.com/oaustegard/claude-skills), entry 26 (forced triad, anaphora form) |
 | `CLR001` | long-sentence |   | static | document | Sentence longer than the configured word limit | Williams |
 | `CLR002` | hard-to-read | · | static | document | Paragraph reading grade above the configured level | Williams |
 | `CLR003` | duplicate-paragraph |   | static | document | Paragraph repeated near-verbatim elsewhere | tropes.fyi |
@@ -307,6 +323,8 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV010` | formulaic-structure |   | Jev | document | Follows a formulaic template, hitting every expected beat in order | tropes.fyi |
 | `JEV011` | revision-artifact |   | Jev | block | Leaves a note about its own edits that the final reader doesn't need | Observed in AI-edited slides and docs |
 | `JEV013` | uniform-front-loading |   | Jev | block | Every paragraph opens by stating its point, with no digression or build-up | Corpus calibration; NN/g front-loading (the inverse is the human norm) |
+| `JEV012` | no-discernible-point | · | Jev | document | No single point a reader could state after reading it | declauding, workflow step 1a (Austegard); replies to Vinitsky's 2026-11-09 post on editing LLM text |
+| `JEV014` | contents-list-standfirst | · | Jev | document | Opens with a contents list shaped as a sentence ('X, plus Y') | declauding register, entry 42 (Austegard) |
 | `JEV101` | stakes-inflation |   | Jev | block | Inflates ordinary stakes to world-historical significance | tropes.fyi |
 | `JEV102` | invented-concept-label |   | Jev | block | Coins an abstract term as if it were established | tropes.fyi |
 | `JEV103` | quotable-bait |   | Jev | block | A standalone quotable line that carries no real information | tropes.fyi |
@@ -319,6 +337,9 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV111` | formulaic-close |   | Jev | block | A canned, low-pressure sign-off | tropes.fyi |
 | `JEV112` | misplaced-greeting |   | Jev | document | A personal greeting or sign-off where the format doesn't call for one | tropes.fyi |
 | `JEV110` | futurist-invitation | · | Jev | block | "Imagine a world where…" salesmanship | tropes.fyi |
+| `JEV113` | stranded-auxiliary | · | Jev | block | A reversal that lands on a bare auxiliary ('The tool died; the data didn't.') | declauding register, entry 49 (Austegard) |
+| `JEV114` | welded-epigram | · | Jev | block | A factual clause welded to a second clause restating it as a maxim | declauding register, entry 39 (Austegard) |
+| `JEV115` | spec-ese | · | Jev | block | Reads like a standards document instead of a person explaining | declauding register, entry 40 (Austegard) |
 | `JEV201` | one-point-dilution | · | Jev | block | Restates one idea several ways without adding anything | tropes.fyi |
 | `JEV202` | superficial-analysis |   | Jev | block | Attaches hollow significance to a mundane fact | tropes.fyi |
 | `JEV203` | despite-challenges | · | Jev | block | Raises a problem only to immediately wave it away | tropes.fyi |
@@ -327,6 +348,10 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV207` | generic-boilerplate |   | Jev | block | Interchangeable boilerplate that could describe almost anyone | tropes.fyi |
 | `JEV208` | faux-personalization | · | Jev | block | Sprinkles specifics to seem researched without genuine detail | tropes.fyi |
 | `JEV206` | rapid-fire-analogies | · | Jev | block | Lists historical companies or shifts to build false authority | tropes.fyi |
+| `JEV209` | exhaustive-negation | · | Jev | block | An absolute negative stands in for the evidence ('nothing else could cause it') | declauding register, entry 47 (Austegard); Abraham, load-bearing PR-description corpus, via declauding references/corpus.md |
+| `JEV210` | totalizing-designation | · | Jev | block | Claims a total where a part was shown ('that's the whole point') | declauding register, entry 51 (Austegard) |
+| `JEV211` | retroactive-significance | · | Jev | block | Grades a passage the reader already read ('that's why X mattered') | declauding register, entry 50 (Austegard) |
+| `JEV212` | speculative-gap-filling | · | Jev | block | Writes about a missing source, then fills the gap with a stock guess | declauding register, entry 33 (Austegard) |
 | `JEV301` | ai-vocabulary |   | Jev | block | Overused AI filler vocabulary used as filler | tropes.fyi |
 | `JEV302` | magic-adverb |   | Jev | block | An adverb inflating significance ('quietly', 'fundamentally') | tropes.fyi |
 | `JEV303` | ornate-noun |   | Jev | block | An ornate or grandiose noun where a plain word fits | tropes.fyi |
@@ -335,10 +360,18 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV306` | serves-as-dodge | · | Jev | block | A pompous copula ('serves as', 'stands as') instead of 'is' | tropes.fyi |
 | `JEV307` | synonym-cycling | · | Jev | block | Cycles synonyms for one referent instead of repeating the word | tropes.fyi |
 | `JEV308` | comma-clipped-tail | · | Jev | block | A short tail hung off a comma instead of landing the point | tropes.fyi |
+| `JEV309` | certainty-adverb | · | Jev | block | A bare adverb asserts the evidence ('plainly', 'provably', 'outright') | declauding register, entry 43 (Austegard); Abraham, load-bearing PR-description corpus, via declauding references/corpus.md |
+| `JEV310` | verification-compound | · | Jev | block | A compound claims how it was checked ('byte-identical', 're-derived') | declauding register, entry 45 (Austegard); Abraham, load-bearing PR-description corpus, via declauding references/corpus.md |
+| `JEV311` | juridical-register | · | Jev | block | Code or a process described as a court ('refuses', 'ruling', 'carve-out') | declauding register, entry 44 (Austegard); Abraham, load-bearing PR-description corpus, via declauding references/corpus.md |
+| `JEV312` | privative-coinage | · | Jev | block | Names a thing by what was not done to it ('ungated', 'unwired', 'vacuous') | declauding register, entry 46 (Austegard); Abraham, load-bearing PR-description corpus, via declauding references/corpus.md |
 | `JEV401` | passive-voice | · | Jev | block | Passive voice where the actor matters | Williams |
 | `JEV402` | nominalization | · | Jev | block | The action is buried in an abstract noun | Williams |
 | `JEV403` | wordy-phrase |   | Jev | block | A multi-word phrase where one word would do | Williams |
 | `JEV404` | hedging | · | Jev | block | Vague hedging that weakens the claim without adding precision | Williams |
+| `JEV405` | noun-stack | · | Jev | block | Three or more nouns stacked as modifiers ('dry-run write prevention') | declauding register, entry 53 (Austegard); Clark, Martin & Mahowald, arXiv 2610.29162, via declauding entries 53-56 |
+| `JEV406` | verbed-noun | · | Jev | block | An ad-hoc noun used as a verb ('footnote it', 'bucket them') | declauding register, entry 54 (Austegard); Clark, Martin & Mahowald, arXiv 2610.29162, via declauding entries 53-56 |
+| `JEV407` | dropped-that | · | Jev | block | Optional 'that' left out of a long clause, so the clause boundary is invisible | declauding register, entry 55 (Austegard); Clark, Martin & Mahowald, arXiv 2610.29162, via declauding entries 53-56; Levy & Jaeger 2007 |
+| `JEV408` | distant-verb | · | Jev | block | Subject held apart from its verb by a list or aside | declauding register, entry 56 (Austegard); Clark, Martin & Mahowald, arXiv 2610.29162, via declauding entries 53-56; Gibson 1998 |
 | `JEV501` | negative-statement |   | Jev | block | Says what something is not, instead of what it is | Strunk & White, The Elements of Style |
 | `JEV502` | vague-abstraction |   | Jev | block | Abstract, general language where concrete detail would serve | Strunk & White, The Elements of Style |
 | `JEV503` | weak-intensifier |   | Jev | block | Leans on 'very', 'rather', 'pretty', 'quite' for emphasis | Strunk & White, The Elements of Style |
@@ -346,6 +379,7 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV505` | faulty-parallelism | · | Jev | block | Coordinate ideas in a series expressed in mismatched forms | Strunk & White, The Elements of Style |
 | `JEV601` | not-task-oriented | · | Jev | block | Documentation that describes the thing instead of telling the reader how to use it | Hargis et al., Developing Quality Technical Information (IBM) |
 | `JEV602` | undefined-term | · | Jev | block | An acronym or specialized term used without being defined on first use | Hargis et al., Developing Quality Technical Information (IBM); Microsoft Writing Style Guide |
+| `JEV603` | diff-anchored-docs | · | Jev | block | Documentation that narrates a change instead of describing the current state | declauding register, entry 34 (Austegard); declauding step 4a (the newcomer read) |
 | `JEV610` | buried-conclusion |   | Jev | document | Makes the reader work through context before stating the conclusion | Minto, The Pyramid Principle; Garner, HBR Guide to Better Business Writing |
 | `JEV620` | editorializing |   | Jev | block | Opinion or loaded language inserted into what is presented as reporting | AP Stylebook; Kovach & Rosenstiel, The Elements of Journalism |
 | `JEV630` | feature-not-benefit |   | Jev | block | Lists features without translating them into a benefit to the reader | Ogilvy, Ogilvy on Advertising; Bly, The Copywriter's Handbook |
@@ -356,12 +390,15 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV701` | label-title |   | Jev | title | A slide title that names a topic instead of stating the slide's point | Alley, The Craft of Scientific Presentations (assertion-evidence) |
 | `JEV702` | title-not-delivered |   | Jev | section | A section or slide whose body doesn't support what its title says | Minto, The Pyramid Principle |
 | `JEV703` | two-points-one-slide | · | Jev | section | A slide that makes more than one main point | Alley, The Craft of Scientific Presentations (assertion-evidence) |
+| `JEV704` | verdict-heading | · | Jev | title | A coy, thesis-shaped or obituary heading where a plain label belongs | declauding register, entry 7 (Austegard); declauding register, entry 52 (Austegard) |
+| `JEV705` | abstract-heading | · | Jev | title | A heading whose head noun is an abstraction ('Spawn availability') | declauding register, entry 41 (Austegard) |
 | `JEV711` | ghost-deck |   | Jev | document (outline) | The titles, read in order, don't tell the argument on their own | Minto, The Pyramid Principle; the consultant's 'ghost deck' test |
 
 ### RIF — Typography and structure (exact checks Jev can't see)
 
 | Code | Rule | On | Kind | Level | What it flags | Source |
 |------|------|----|------|-------|---------------|--------|
+| `RIF010` | predicate-hyphen | · | static | document | Compound keeps its hyphen after the noun ('the team is cross-functional') | declauding (Austegard, github.com/oaustegard/claude-skills), entry 36; Chicago Manual of Style 7.85 |
 | `RIF001` | decorative-unicode |   | static | block | Curly quotes or arrows (glyphs Jev can't see) | tropes.fyi |
 | `RIF002` | title-case-heading |   | static | document | Heading capitalizes every word | tropes.fyi |
 | `RIF003` | bold-first-bullets |   | static | document | Most list items open with a bold lead-in | tropes.fyi |
