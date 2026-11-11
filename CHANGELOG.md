@@ -6,14 +6,27 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-### Fixed
-- Main-content extraction crashed on nested elements with chrome roles.
-- README: install from PyPI (`riff-lint`); the repository is public; document the OpenAI Decisions API
-  backend, the `extend-ignore`, `classify`, `type` and `jev-concurrency` settings, and the flags the usage
-  list left out; the by-type source table is now generated from the rules, so it lists only sources a
-  rule cites. The example `riff.toml` no longer names a `WRD` rule prefix that does not exist.
+## [0.3.0] - 2026-11-11
+
+The first PyPI release since 0.1.0: the publish job for the 0.2.0 tag was cancelled before it ran, so
+`pip install riff-lint` has installed 0.1.0. This release also carries everything listed under 0.2.0.
 
 ### Added
+- OpenAI Decisions API support: `--model openai:gpt-6-luna` (reads `OPENAI_API_KEY`, and
+  `OPENAI_BASE_URL` to override the host). Yes/no rules are sent as `predicate` questions and the
+  document-type classifier as a `choice` question. Thresholds are still tuned to Jev.
+- Structure rules. Hard norms from the Google and APA style guides: `RIF006` heading hierarchy (skipped
+  levels, lone subsection, second h1), `RIF007` heading form (numbered, linked or emoji headings),
+  `RIF008` changelog shape (Keep a Changelog), `RIF009` single-item list. Statistics: `CLR008` uniform
+  section size and `CLR009` overlong paragraph (both off by default, they did not separate human from AI
+  writing), `CLR010` bold density, `CLR011` wall of text, `CLR012` slide load (off by default).
+- Rhythm rules for polished AI prose that has no classic tropes: `CLR004` repeated contrast frame
+  ("instead of", "rather than", "not just X, but Y"), `CLR005` uniform sentence length, and `CLR006`
+  uniform paragraph length, plus `CLR007` paragraphs that keep closing on a "So…" or "which is why…"
+  takeaway. Thresholds are calibrated on public human technical posts.
+- `JEV013` uniform front-loading: AI drafts state the point in the first sentence of nearly every
+  paragraph, human posts do not. It is the first aggregate Jev rule: the block question is asked of every
+  paragraph and the document is flagged once (`share_below`).
 - Rules ported from the [declauding](https://github.com/oaustegard/claude-skills) register (Austegard,
   MIT). All are **off by default** until they are probed against the live model and benched; enable them
   with `--extend-select`. Each Jev question carries the register's "earned when" case as `not_for`.
@@ -45,22 +58,14 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   library's own docstrings.
 - `scripts/probe_rules.py` prints a Jev rule's probability on its own examples and on a plain control, the
   probe CONTRIBUTING asks for before a rule is turned on.
-- Structure rules. Hard norms from the Google and APA style guides: `RIF006` heading hierarchy (skipped
-  levels, lone subsection, second h1), `RIF007` heading form (numbered, linked or emoji headings),
-  `RIF008` changelog shape (Keep a Changelog), `RIF009` single-item list. Statistics: `CLR008` uniform
-  section size and `CLR009` overlong paragraph (both off by default, they did not separate human from AI
-  writing), `CLR010` bold density, `CLR011` wall of text, `CLR012` slide load (off by default).
-- `JEV013` uniform front-loading: AI drafts state the point in the first sentence of nearly every
-  paragraph, human posts do not. It is the first aggregate Jev rule: the block question is asked of every
-  paragraph and the document is flagged once (`share_below`).
 - `scripts/bench_structure.py` benchmarks rules over a labelled human/AI corpus.
-- Rhythm rules for polished AI prose that has no classic tropes: `CLR004` repeated contrast frame
-  ("instead of", "rather than", "not just X, but Y"), `CLR005` uniform sentence length, and `CLR006`
-  uniform paragraph length, plus `CLR007` paragraphs that keep closing on a "So…" or "which is why…"
-  takeaway. Thresholds are calibrated on public human technical posts.
-- OpenAI Decisions API support: `--model openai:gpt-6-luna` (reads `OPENAI_API_KEY`, and
-  `OPENAI_BASE_URL` to override the host). Yes/no rules are sent as `predicate` questions and the
-  document-type classifier as a `choice` question. Thresholds are still tuned to Jev.
+
+### Fixed
+- Main-content extraction crashed on nested elements with chrome roles.
+- README: install from PyPI (`riff-lint`); the repository is public; document the OpenAI Decisions API
+  backend, the `extend-ignore`, `classify`, `type` and `jev-concurrency` settings, and the flags the usage
+  list left out; the by-type source table is now generated from the rules, so it lists only sources a
+  rule cites. The example `riff.toml` no longer names a `WRD` rule prefix that does not exist.
 
 ## [0.2.0] - 2026-10-05
 
