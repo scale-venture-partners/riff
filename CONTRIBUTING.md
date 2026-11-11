@@ -79,8 +79,12 @@ field when it could be confused with a neighbouring rule), a `threshold`, and
 `default=False` if it is noisy or niche. Then:
 
 1. Probe it on a few positive and negative examples before committing, so it fires
-   on real violations and stays quiet on good prose.
-2. Add a case to the tests where practical.
+   on real violations and stays quiet on good prose. `uv run python scripts/probe_rules.py JEV123`
+   asks the rule about each of its `examples` and about a plain control; with no code it probes every
+   off-by-default rule. A rule you could not probe ships with `default=False`.
+2. Add a case to the tests where practical. An offline (code) rule must also keep
+   `tests/test_false_positives.py` green: every offline rule, on or off by default, reports nothing
+   on the clean controls in `tests/fixtures/human/`. Fix the rule, not the control.
 3. Regenerate the rule table: `uv run python scripts/gen_readme.py`.
 
 ## Style

@@ -1,16 +1,19 @@
 # riff
 
 [![CI](https://github.com/scale-venture-partners/riff/actions/workflows/ci.yml/badge.svg)](https://github.com/scale-venture-partners/riff/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/riff-lint.svg)](https://pypi.org/project/riff-lint/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 A small, fast prose linter. It reads a document, flags the writing tells and clarity
 problems it finds, and reports them with **ruff-style rule codes** you can select, ignore,
-and configure. Static rules are pure Python and run in milliseconds; the semantic rules are
-one call each to [TypeSafe's **Jev**](https://typesafe.ai) model, which returns a calibrated
-probability per judgment instead of generated text.
+and configure. Static rules are pure Python and run in milliseconds. The semantic rules are yes/no
+questions for [TypeSafe's **Jev**](https://typesafe.ai), a decision model that returns a calibrated
+probability per judgment instead of generated text; every rule asked about the same paragraph (or
+section, or document) shares one call.
 
 ```console
 $ riff draft.md
+draft.md: type: blog_post (0.91)
 draft.md:1:1: RIF002 heading is Title Case; use sentence case
     Understanding The Impact Of Modern Technology
 draft.md:3:1: JEV001 Announces what it is about to say instead of saying it p=0.92
@@ -20,48 +23,42 @@ draft.md:5:1: JEV301 Overused AI filler vocabulary used as filler p=0.88
 draft.md:9:1: JEV103 A standalone quotable line that carries no real information p=0.79
     Every metric that rewards volume punishes leverage.
 
-12 findings in 1 file (JEV301 ×3, JEV001 ×2, RIF002 ×1).
-Jev: 14 calls, 9,210 input tokens (~$0.0004)
+4 findings in 1 file (RIF002 ×1, JEV001 ×1, JEV301 ×1, JEV103 ×1).
+jev-latest: 14 calls, 9,210 input tokens (~$0.0004)
 ```
 
 ## Install
 
-riff is **not on PyPI yet**, so install it from source. It uses
-[uv](https://docs.astral.sh/uv/).
+riff is on PyPI as [`riff-lint`](https://pypi.org/project/riff-lint/) (the name `riff` was taken)
+and installs a `riff` command. It needs Python 3.11 or later.
 
-**Clone and run:**
+```console
+uv tool install riff-lint     # or: pipx install riff-lint, or pip install riff-lint
+riff --help
+uvx --from riff-lint riff draft.md   # run once without installing
+```
+
+The PyPI release can lag `main`; compare `riff --version` with the [changelog](CHANGELOG.md). To
+run the latest code from GitHub:
+
+```console
+uv tool install git+https://github.com/scale-venture-partners/riff
+uvx --from git+https://github.com/scale-venture-partners/riff riff draft.md
+```
+
+To work on riff itself, clone it and use [uv](https://docs.astral.sh/uv/):
 
 ```console
 git clone https://github.com/scale-venture-partners/riff
 cd riff
 uv sync
-uv run riff --help
 uv run riff draft.md
 ```
 
-**Run directly from GitHub, no clone,** with uvx (the repo is private, so this uses
-your existing GitHub credentials via git):
-
-```console
-uvx --from git+https://github.com/scale-venture-partners/riff riff draft.md
-# SSH works too, if that's how you authenticate to GitHub:
-uvx --from git+ssh://git@github.com/scale-venture-partners/riff riff draft.md
-```
-
-To install it as a persistent `riff` command on your PATH from the repo:
-
-```console
-uv tool install git+https://github.com/scale-venture-partners/riff
-riff --help
-```
-
-When riff is published to PyPI, `uv tool install riff-lint` will install the same
-`riff` command (the `riff` name itself is taken on PyPI).
-
 ## Usage
 
-The examples below assume `riff` is on your PATH (via `uv tool install` above). From a
-clone without installing, prefix each with `uv run` (e.g. `uv run riff draft.md`).
+The examples below assume `riff` is on your PATH. From a clone, prefix each with `uv run`
+(`uv run riff draft.md`).
 
 ```console
 riff draft.md                    # lint one file (positional)
@@ -71,51 +68,78 @@ riff https://example.com/blog/post  # fetch a web page and lint just its article
 riff draft.md --no-jev           # static rules only, no API key needed
 riff draft.md --select JEV,RIF   # only these codes/prefixes
 riff draft.md --ignore JEV002    # keep defaults, drop one rule
+riff draft.md --extend-select JEV401  # keep defaults, add an off-by-default rule
 riff draft.md --debug-jev        # print every Jev probability, to tune thresholds
 riff email.txt --type email      # force the document type (skips classification)
 riff draft.md --no-classify      # don't classify; type-specific rules run everywhere
+riff draft.md --model openai:gpt-6-luna  # another decision model (see below)
 riff draft.md --format json      # machine-readable output
+riff draft.md -q                 # findings only, no summary line
+riff draft.md --config ci/riff.toml  # use this config instead of discovering one
+riff --outline deck.pptx         # print the sections, titles and blocks riff reads, and exit
 riff --list-rules                # the full catalog
 riff --explain JEV001            # one rule in detail
+riff --compare draft.md edited.md  # check an edit kept every claim
 ```
 
-**Supported formats:** Markdown (`.md`), plain text (`.txt`), HTML (`.html`), Word (`.docx`),
-PowerPoint (`.pptx`). Findings report a line and column for text formats, and a paragraph or
-slide label for Office formats.
+`riff --help` lists every flag. Color is on in a terminal; `--no-color` or `NO_COLOR=1` turns it off.
+
+**Supported formats:** Markdown (`.md`, `.markdown`), plain text (`.txt`, `.text`), HTML (`.html`,
+`.htm`), Word (`.docx`), PowerPoint (`.pptx`). Findings report a line and column for text formats,
+and a paragraph or slide label for Office formats.
 
 **URLs:** pass an `http(s)` URL to fetch the page and lint only its article body. riff picks the
 largest `<article>`, else `<main>`, else `<body>`, drops navigation, headers, footers, and sidebars,
 and narrows to the block that holds most of the paragraph text. Findings are labelled `block N`
 (position in the extracted body), since fetched HTML is often minified onto one line.
 
-**Exit codes:** `0` clean, `1` findings, `2` usage or file error.
+**Exit codes:** `0` clean, `1` findings, `2` a usage or file error, a missing API key, or a Jev
+request that failed (a lint with failed requests is incomplete, so it is never reported as clean).
+`--compare` uses the same codes: `1` means the rewrite lost or added something.
+
+### Checking an edit
+
+Fixing what riff flags is an edit to how a draft sounds, and it should not change what the draft claims.
+The two ways that goes wrong, a claim dropped or a fact invented, both read fluently afterwards.
+`riff --compare SOURCE REWRITE` compares the two versions and reports every number, name, quotation, code
+span and link target the rewrite lost or added, plus any drop in superlative ("the single most"), scope
+("every", "only"), negation and hedge ("roughly") constructions. It exits `1` when it finds something;
+`--waive TOKEN` silences a finding that is a rephrasing, and `--format json` gives machine-readable output.
+It is lexical on purpose: an embedding scores a rewrite that dropped a ranking word as nearly identical to
+the source. Ported from the [declauding](https://github.com/oaustegard/claude-skills) skill's
+`declaude_diff.py`.
 
 ## The Jev-backed rules
 
-The semantic rules need a TypeSafe API key. Set `TYPESAFE_API_KEY` in the environment (create
-one at <https://console.typesafe.ai/>). Without it, `--no-jev` runs the static rules alone; if
-you select a Jev rule with no key, riff stops and tells you the two ways to fix it rather than
-degrading silently.
+The semantic rules, and the document-type classifier, need a decision model. The default is Jev: set
+`TYPESAFE_API_KEY` in the environment (create one at <https://console.typesafe.ai/>). Without a key,
+`riff draft.md` stops with exit code `2` and says how to fix it, rather than quietly running fewer
+rules; `riff draft.md --no-jev` runs the static rules alone, and `--type` sets the document type
+without a classification call.
 
 ### Other decision models
 
 Jev is the default, but riff runs on any *decision model*: one that returns a calibrated
-probability per yes/no question instead of generated text. Language models such as GPT or Claude
-are not decision models and are rejected. riff talks to them through
-[Pydantic AI's decision models](https://pydantic.dev/docs/ai/models/decision/):
+probability per yes/no question instead of generated text. Chat and completion models (GPT, Claude,
+and the like) are not decision models, and riff rejects them. riff talks to decision models through
+[Pydantic AI's decision models](https://pydantic.dev/docs/ai/models/decision/), plus OpenAI's
+Decisions API directly:
 
 ```console
 riff draft.md                                  # Jev, TYPESAFE_API_KEY
 riff draft.md --model typesafe:jev-latest      # the same, spelled out
+riff draft.md --model openai:gpt-6-luna        # OpenAI's Decisions API, OPENAI_API_KEY
 export SYSTEM_ONE_BASE_URL=http://localhost:8000   # any server that speaks POST /v1/systemone
 riff draft.md --model system-one:laya          # Laya, CLM, an Ollama decision model...
 ```
 
-Set `SYSTEM_ONE_API_KEY` too if the server needs one. **Thresholds are tuned to Jev.** Another
-model's probabilities sit on a different scale, so check its findings with `--debug-jev` and set
-`[thresholds]` for it before trusting the output. Small-context models (Ollama's `tev1` reads about
-2,000 tokens) cannot hold riff's full rule set; riff warns when a prompt overflows, and `--select`
-asks fewer rules per run.
+`OPENAI_BASE_URL` overrides the OpenAI host, and `SYSTEM_ONE_API_KEY` is sent if a System One
+server needs one. Set the model for a project with `model = "openai:gpt-6-luna"` in `riff.toml`.
+
+**Thresholds are tuned to Jev.** Another model's probabilities sit on a different scale, so check
+its findings with `--debug-jev` and set `[thresholds]` for it before trusting the output.
+Small-context models (Ollama's `tev1` reads about 2,000 tokens) cannot hold riff's full rule set;
+riff warns when a prompt overflows, and `--select` asks fewer rules per run.
 
 Each Jev rule is one yes/no (Noul) question asked about one part of the document: a paragraph for
 most rules, or a sentence, a title, a section, or the whole document (see below). It is phrased so a
@@ -183,8 +207,12 @@ file's directory upward. Command-line flags override the file. `select`/`ignore`
 select = ["RIF", "CLR", "JEV"]          # omit to use every default-on rule
 ignore = ["JEV002"]                      # drop reasoning-leak (noisy on reflective writing)
 extend-select = ["JEV401"]               # turn on a default-off rule (passive voice)
+extend-ignore = ["CLR001"]               # drop a rule on top of `select`/`ignore`
 jev = true                               # set false to skip semantic rules
-model = "jev-latest"
+model = "jev-latest"                     # or "openai:gpt-6-luna", "system-one:<name>"
+classify = true                          # set false to skip document-type classification
+# type = "memo"                          # force the document type for every file under this config
+jev-concurrency = 8                      # Jev requests in flight at once
 max-sentence-words = 40                  # CLR001 threshold
 max-reading-grade = 12                   # CLR002 threshold
 jev-min-words = 4                        # shortest paragraph or sentence sent to Jev (default 8; 4 for .pptx)
@@ -220,10 +248,11 @@ The type identifiers are: `sms`, `email`, `chat_message`, `memo`, `letter`, `ess
 
 The built-in rules are deliberately generic. Anything specific to your team,
 house style, or domain you add in your own `riff.toml` with `[[custom_rules]]`. No
-code changes, no fork. Two kinds:
+code changes, no fork. Three kinds: `jev` (a question for the model), `phrase` (literal strings,
+offline) and `regex` (a pattern, offline).
 
 ```toml
-# A Jev rule: a yes/no question asked about your text (needs TYPESAFE_API_KEY).
+# A Jev rule: a yes/no question asked about your text (needs a decision model, as above).
 [[custom_rules]]
 code = "TEAM001"
 name = "no-competitor-names"
@@ -272,12 +301,15 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 
 ## Rules
 
-83 rules (62 semantic, 21 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
+107 rules (82 semantic, 25 static). A `·` means off by default; enable it with `--select` or `--extend-select`.
 
 ### CLR — Clarity metrics (arithmetic Jev can't do)
 
 | Code | Rule | On | Kind | Level | What it flags | Source |
 |------|------|----|------|-------|---------------|--------|
+| `CLR013` | flat-certainty-register | · | static | document | Prose is dense with the vocabulary of the flat-certainty register | Abraham, load-bearing PR-description corpus, via declauding references/corpus.md; declauding (Austegard, github.com/oaustegard/claude-skills), entries 43-47 |
+| `CLR014` | echoed-skeleton | · | static | document | Consecutive sentences built on the same word-for-word skeleton | declauding (Austegard, github.com/oaustegard/claude-skills), entry 26 (forced triad, third shape) |
+| `CLR015` | anaphora-run | · | static | document | Three sentences or clauses in a row open on the same two words | declauding (Austegard, github.com/oaustegard/claude-skills), entry 26 (forced triad, anaphora form) |
 | `CLR001` | long-sentence |   | static | document | Sentence longer than the configured word limit | Williams |
 | `CLR002` | hard-to-read | · | static | document | Paragraph reading grade above the configured level | Williams |
 | `CLR003` | duplicate-paragraph |   | static | document | Paragraph repeated near-verbatim elsewhere | tropes.fyi |
@@ -307,6 +339,8 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV010` | formulaic-structure |   | Jev | document | Follows a formulaic template, hitting every expected beat in order | tropes.fyi |
 | `JEV011` | revision-artifact |   | Jev | block | Leaves a note about its own edits that the final reader doesn't need | Observed in AI-edited slides and docs |
 | `JEV013` | uniform-front-loading |   | Jev | block | Every paragraph opens by stating its point, with no digression or build-up | Corpus calibration; NN/g front-loading (the inverse is the human norm) |
+| `JEV012` | no-discernible-point | · | Jev | document | No single point a reader could state after reading it | declauding, workflow step 1a (Austegard); replies to Vinitsky's 2026-11-09 post on editing LLM text |
+| `JEV014` | contents-list-standfirst | · | Jev | document | Opens with a contents list shaped as a sentence ('X, plus Y') | declauding register, entry 42 (Austegard) |
 | `JEV101` | stakes-inflation |   | Jev | block | Inflates ordinary stakes to world-historical significance | tropes.fyi |
 | `JEV102` | invented-concept-label |   | Jev | block | Coins an abstract term as if it were established | tropes.fyi |
 | `JEV103` | quotable-bait |   | Jev | block | A standalone quotable line that carries no real information | tropes.fyi |
@@ -319,6 +353,9 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV111` | formulaic-close |   | Jev | block | A canned, low-pressure sign-off | tropes.fyi |
 | `JEV112` | misplaced-greeting |   | Jev | document | A personal greeting or sign-off where the format doesn't call for one | tropes.fyi |
 | `JEV110` | futurist-invitation | · | Jev | block | "Imagine a world where…" salesmanship | tropes.fyi |
+| `JEV113` | stranded-auxiliary | · | Jev | block | A reversal that lands on a bare auxiliary ('The tool died; the data didn't.') | declauding register, entry 49 (Austegard) |
+| `JEV114` | welded-epigram | · | Jev | block | A factual clause welded to a second clause restating it as a maxim | declauding register, entry 39 (Austegard) |
+| `JEV115` | spec-ese | · | Jev | block | Reads like a standards document instead of a person explaining | declauding register, entry 40 (Austegard) |
 | `JEV201` | one-point-dilution | · | Jev | block | Restates one idea several ways without adding anything | tropes.fyi |
 | `JEV202` | superficial-analysis |   | Jev | block | Attaches hollow significance to a mundane fact | tropes.fyi |
 | `JEV203` | despite-challenges | · | Jev | block | Raises a problem only to immediately wave it away | tropes.fyi |
@@ -327,6 +364,10 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV207` | generic-boilerplate |   | Jev | block | Interchangeable boilerplate that could describe almost anyone | tropes.fyi |
 | `JEV208` | faux-personalization | · | Jev | block | Sprinkles specifics to seem researched without genuine detail | tropes.fyi |
 | `JEV206` | rapid-fire-analogies | · | Jev | block | Lists historical companies or shifts to build false authority | tropes.fyi |
+| `JEV209` | exhaustive-negation | · | Jev | block | An absolute negative stands in for the evidence ('nothing else could cause it') | declauding register, entry 47 (Austegard); Abraham, load-bearing PR-description corpus, via declauding references/corpus.md |
+| `JEV210` | totalizing-designation | · | Jev | block | Claims a total where a part was shown ('that's the whole point') | declauding register, entry 51 (Austegard) |
+| `JEV211` | retroactive-significance | · | Jev | block | Grades a passage the reader already read ('that's why X mattered') | declauding register, entry 50 (Austegard) |
+| `JEV212` | speculative-gap-filling | · | Jev | block | Writes about a missing source, then fills the gap with a stock guess | declauding register, entry 33 (Austegard) |
 | `JEV301` | ai-vocabulary |   | Jev | block | Overused AI filler vocabulary used as filler | tropes.fyi |
 | `JEV302` | magic-adverb |   | Jev | block | An adverb inflating significance ('quietly', 'fundamentally') | tropes.fyi |
 | `JEV303` | ornate-noun |   | Jev | block | An ornate or grandiose noun where a plain word fits | tropes.fyi |
@@ -335,10 +376,18 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV306` | serves-as-dodge | · | Jev | block | A pompous copula ('serves as', 'stands as') instead of 'is' | tropes.fyi |
 | `JEV307` | synonym-cycling | · | Jev | block | Cycles synonyms for one referent instead of repeating the word | tropes.fyi |
 | `JEV308` | comma-clipped-tail | · | Jev | block | A short tail hung off a comma instead of landing the point | tropes.fyi |
+| `JEV309` | certainty-adverb | · | Jev | block | A bare adverb asserts the evidence ('plainly', 'provably', 'outright') | declauding register, entry 43 (Austegard); Abraham, load-bearing PR-description corpus, via declauding references/corpus.md |
+| `JEV310` | verification-compound | · | Jev | block | A compound claims how it was checked ('byte-identical', 're-derived') | declauding register, entry 45 (Austegard); Abraham, load-bearing PR-description corpus, via declauding references/corpus.md |
+| `JEV311` | juridical-register | · | Jev | block | Code or a process described as a court ('refuses', 'ruling', 'carve-out') | declauding register, entry 44 (Austegard); Abraham, load-bearing PR-description corpus, via declauding references/corpus.md |
+| `JEV312` | privative-coinage | · | Jev | block | Names a thing by what was not done to it ('ungated', 'unwired', 'vacuous') | declauding register, entry 46 (Austegard); Abraham, load-bearing PR-description corpus, via declauding references/corpus.md |
 | `JEV401` | passive-voice | · | Jev | block | Passive voice where the actor matters | Williams |
 | `JEV402` | nominalization | · | Jev | block | The action is buried in an abstract noun | Williams |
 | `JEV403` | wordy-phrase |   | Jev | block | A multi-word phrase where one word would do | Williams |
 | `JEV404` | hedging | · | Jev | block | Vague hedging that weakens the claim without adding precision | Williams |
+| `JEV405` | noun-stack | · | Jev | block | Three or more nouns stacked as modifiers ('dry-run write prevention') | declauding register, entry 53 (Austegard); Clark, Martin & Mahowald, arXiv 2610.29162, via declauding entries 53-56 |
+| `JEV406` | verbed-noun | · | Jev | block | An ad-hoc noun used as a verb ('footnote it', 'bucket them') | declauding register, entry 54 (Austegard); Clark, Martin & Mahowald, arXiv 2610.29162, via declauding entries 53-56 |
+| `JEV407` | dropped-that | · | Jev | block | Optional 'that' left out of a long clause, so the clause boundary is invisible | declauding register, entry 55 (Austegard); Clark, Martin & Mahowald, arXiv 2610.29162, via declauding entries 53-56; Levy & Jaeger 2007 |
+| `JEV408` | distant-verb | · | Jev | block | Subject held apart from its verb by a list or aside | declauding register, entry 56 (Austegard); Clark, Martin & Mahowald, arXiv 2610.29162, via declauding entries 53-56; Gibson 1998 |
 | `JEV501` | negative-statement |   | Jev | block | Says what something is not, instead of what it is | Strunk & White, The Elements of Style |
 | `JEV502` | vague-abstraction |   | Jev | block | Abstract, general language where concrete detail would serve | Strunk & White, The Elements of Style |
 | `JEV503` | weak-intensifier |   | Jev | block | Leans on 'very', 'rather', 'pretty', 'quite' for emphasis | Strunk & White, The Elements of Style |
@@ -346,6 +395,7 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV505` | faulty-parallelism | · | Jev | block | Coordinate ideas in a series expressed in mismatched forms | Strunk & White, The Elements of Style |
 | `JEV601` | not-task-oriented | · | Jev | block | Documentation that describes the thing instead of telling the reader how to use it | Hargis et al., Developing Quality Technical Information (IBM) |
 | `JEV602` | undefined-term | · | Jev | block | An acronym or specialized term used without being defined on first use | Hargis et al., Developing Quality Technical Information (IBM); Microsoft Writing Style Guide |
+| `JEV603` | diff-anchored-docs | · | Jev | block | Documentation that narrates a change instead of describing the current state | declauding register, entry 34 (Austegard); declauding step 4a (the newcomer read) |
 | `JEV610` | buried-conclusion |   | Jev | document | Makes the reader work through context before stating the conclusion | Minto, The Pyramid Principle; Garner, HBR Guide to Better Business Writing |
 | `JEV620` | editorializing |   | Jev | block | Opinion or loaded language inserted into what is presented as reporting | AP Stylebook; Kovach & Rosenstiel, The Elements of Journalism |
 | `JEV630` | feature-not-benefit |   | Jev | block | Lists features without translating them into a benefit to the reader | Ogilvy, Ogilvy on Advertising; Bly, The Copywriter's Handbook |
@@ -356,12 +406,15 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 | `JEV701` | label-title |   | Jev | title | A slide title that names a topic instead of stating the slide's point | Alley, The Craft of Scientific Presentations (assertion-evidence) |
 | `JEV702` | title-not-delivered |   | Jev | section | A section or slide whose body doesn't support what its title says | Minto, The Pyramid Principle |
 | `JEV703` | two-points-one-slide | · | Jev | section | A slide that makes more than one main point | Alley, The Craft of Scientific Presentations (assertion-evidence) |
+| `JEV704` | verdict-heading | · | Jev | title | A coy, thesis-shaped or obituary heading where a plain label belongs | declauding register, entry 7 (Austegard); declauding register, entry 52 (Austegard) |
+| `JEV705` | abstract-heading | · | Jev | title | A heading whose head noun is an abstraction ('Spawn availability') | declauding register, entry 41 (Austegard) |
 | `JEV711` | ghost-deck |   | Jev | document (outline) | The titles, read in order, don't tell the argument on their own | Minto, The Pyramid Principle; the consultant's 'ghost deck' test |
 
 ### RIF — Typography and structure (exact checks Jev can't see)
 
 | Code | Rule | On | Kind | Level | What it flags | Source |
 |------|------|----|------|-------|---------------|--------|
+| `RIF010` | predicate-hyphen | · | static | document | Compound keeps its hyphen after the noun ('the team is cross-functional') | declauding (Austegard, github.com/oaustegard/claude-skills), entry 36; Chicago Manual of Style 7.85 |
 | `RIF001` | decorative-unicode |   | static | block | Curly quotes or arrows (glyphs Jev can't see) | tropes.fyi |
 | `RIF002` | title-case-heading |   | static | document | Heading capitalizes every word | tropes.fyi |
 | `RIF003` | bold-first-bullets |   | static | document | Most list items open with a bold lead-in | tropes.fyi |
@@ -374,52 +427,66 @@ obey the same `select`/`ignore`/`threshold` controls as built-in rules, so
 
 ## Sources
 
-The rule set comes from tropes.fyi, Williams, and Strunk & White:
+The general catalog draws on:
 
-- AI writing tells, from [tropes.fyi](https://tropes.fyi/tropes-md): negative parallelism,
-  em-dash addiction, magic adverbs, signposted conclusions, and the rest.
-- Clarity and grace, from Joseph M. Williams, *Style: Lessons in Clarity and Grace*: wordy
-  phrases, nominalizations, passive voice, sentence length, and readability.
-- The Elements of Style, by Strunk & White: put statements in positive form, use concrete
-  language, cut weak intensifiers, avoid loose-sentence chains, and keep parallel form.
+- AI writing tells from [tropes.fyi](https://tropes.fyi/tropes-md) and Wikipedia's
+  [Signs of AI writing](https://en.wikipedia.org/wiki/Wikipedia:Signs_of_AI_writing): negative
+  parallelism, magic adverbs, signposted conclusions, and the rest.
+- Joseph M. Williams, *Style: Lessons in Clarity and Grace*: wordy phrases, nominalizations, passive
+  voice, sentence length, and readability.
+- Strunk & White, *The Elements of Style*: positive form, concrete language, weak intensifiers,
+  loose-sentence chains, and parallel form.
+- The [declauding](https://github.com/oaustegard/claude-skills) register (Oskar Austegard, MIT):
+  flat certainty, compressed syntax, staged closers, and doc headings; with the corpus figures it
+  cites from Louis Abraham's [load-bearing](https://github.com/louisabraham/load-bearing) study of
+  GitHub pull request descriptions, and Clark, Martin & Mahowald (arXiv 2610.29162) on compressed
+  syntax in model output.
+- Stylometry for the rhythm rules: Desaire et al. 2023 on sentence- and paragraph-length variation,
+  with thresholds calibrated on public human technical posts.
+- Structure norms from the Google developer documentation style guide, APA Style, Nielsen Norman
+  Group, and Keep a Changelog.
 
 Almost every tell is a Jev judgment: pattern-matching misses paraphrases and fires on look-alikes,
 so anything that depends on meaning or context is a model question, not a regex. Only what Jev
-genuinely cannot do stays in code — exact glyphs it never sees (curly quotes, arrows), structural
-facts in markup, cross-document duplicate detection, and arithmetic metrics (sentence length, grade).
+cannot do stays in code: exact glyphs it never sees (curly quotes, arrows), structural facts in
+markup, comparison across paragraphs, and arithmetic (sentence length, reading grade, rates).
 
-### Sources by document type
+### Rules by document type
 
-The type-specific rules are mined from a style text per document type — Minto for reports, Ogilvy
-for marketing, Hargis for docs, and so on. Where a form has no single canonical work, we cite the recognized guide or
-convention. A rule may cite more than one source, and these overlap with the general catalog above.
+Rules gated to particular kinds of writing, and the sources they cite (generated from the catalog).
+Every other rule runs on every type, apart from types it explicitly skips.
 
-| Type | Source(s) mined |
-|---|---|
-| essay, book_chapter | Zinsser, *On Writing Well*; King, *On Writing* |
-| article, press_release | *AP Stylebook*; Kovach & Rosenstiel, *The Elements of Journalism* |
-| report, memo | Minto, *The Pyramid Principle*; Garner, *HBR Guide to Better Business Writing* |
-| academic_paper | Sword, *Stylish Academic Writing*; Williams, *Style* |
-| documentation | Hargis et al., *Developing Quality Technical Information* (IBM); Microsoft / Google style guides |
-| marketing_copy, product_description | Ogilvy, *Ogilvy on Advertising*; Bly, *The Copywriter's Handbook* |
-| script | McKee, *Story*; Field, *Screenplay* |
-| poem | Oliver, *A Poetry Handbook*; Fry, *The Ode Less Travelled* |
-| release_notes | *Keep a Changelog*; *Semantic Versioning* |
-| email, letter | Shipley & Schwalbe, *Send*; Garner, *HBR Guide* |
-| blog_post, social_post | Handley, *Everybody Writes* |
-| review | Barnet, *A Short Guide to Writing About …* |
-| sms, chat_message | Crystal, *Txtng: The Gr8 Db8*; McCulloch, *Because Internet* (descriptive, not prescriptive) |
-| resume | conventions: strong action verbs, quantified results, no first person |
-| presentation | Alley, *The Craft of Scientific Presentations* (assertion-evidence); Minto, *The Pyramid Principle* |
+| Type | Rules | Sources |
+|---|---|---|
+| memo | `JEV610`, `JEV702`, `RIF006` | Minto, The Pyramid Principle; Garner, HBR Guide to Better Business Writing; Google developer documentation style guide: headings; APA Style: headings |
+| essay | `JEV013`, `JEV702` | Corpus calibration; NN/g front-loading (the inverse is the human norm); Minto, The Pyramid Principle |
+| blog_post | `JEV013`, `JEV702`, `JEV704` | Corpus calibration; NN/g front-loading (the inverse is the human norm); Minto, The Pyramid Principle; declauding register, entry 7 (Austegard); declauding register, entry 52 (Austegard) |
+| article | `JEV013`, `JEV620`, `JEV702` | Corpus calibration; NN/g front-loading (the inverse is the human norm); AP Stylebook; Kovach & Rosenstiel, The Elements of Journalism; Minto, The Pyramid Principle |
+| report | `JEV602`, `JEV610`, `JEV702`, `RIF006` | Hargis et al., Developing Quality Technical Information (IBM); Microsoft Writing Style Guide; Minto, The Pyramid Principle; Garner, HBR Guide to Better Business Writing; Google developer documentation style guide: headings; APA Style: headings |
+| academic_paper | `JEV602`, `RIF006` | Hargis et al., Developing Quality Technical Information (IBM); Microsoft Writing Style Guide; Google developer documentation style guide: headings; APA Style: headings |
+| documentation | `JEV601`, `JEV602`, `JEV603`, `JEV704`, `RIF006`, `RIF009`, `CLR011` | Hargis et al., Developing Quality Technical Information (IBM); Microsoft Writing Style Guide; declauding register, entry 34 (Austegard); declauding step 4a (the newcomer read); declauding register, entry 7 (Austegard); declauding register, entry 52 (Austegard); Google developer documentation style guide: headings; APA Style: headings; Google developer documentation style guide: lists; Nielsen Norman Group: how users read on the web; Microsoft scannable content |
+| release_notes | `JEV660`, `RIF006`, `RIF008`, `RIF009` | Keep a Changelog (keepachangelog.com); Google developer documentation style guide: headings; APA Style: headings; Keep a Changelog 1.1.0; Google developer documentation style guide: lists |
+| marketing_copy | `JEV630`, `CLR011` | Ogilvy, Ogilvy on Advertising; Bly, The Copywriter's Handbook; Nielsen Norman Group: how users read on the web; Microsoft scannable content |
+| product_description | `JEV630`, `RIF009`, `CLR011` | Ogilvy, Ogilvy on Advertising; Bly, The Copywriter's Handbook; Google developer documentation style guide: lists; Nielsen Norman Group: how users read on the web; Microsoft scannable content |
+| press_release | `JEV620` | AP Stylebook; Kovach & Rosenstiel, The Elements of Journalism |
+| resume | `JEV670` | Resume conventions (strong action verbs, quantified results) |
+| script | `JEV640` | McKee, Story; Field, Screenplay |
+| poem | `JEV650` | Oliver, A Poetry Handbook; Fry, The Ode Less Travelled |
+| presentation | `JEV701`, `JEV702`, `JEV703`, `JEV711`, `CLR012` | Alley, The Craft of Scientific Presentations (assertion-evidence); Minto, The Pyramid Principle; the consultant's 'ghost deck' test |
 
 ## Development
 
 ```console
 uv sync
-uv run pytest            # static tests run offline; live Jev tests skip without a key
-uv run ruff check src tests
-uv run python scripts/gen_readme.py   # regenerate the rule table below
+uv run ruff check src tests scripts   # lint, as CI runs it
+uv run pytest --cov                   # tests; coverage floor 90%. Live Jev tests skip without a key
+uv run python scripts/gen_readme.py   # regenerate this README from the rule catalog
+uv run python scripts/probe_rules.py JEV123         # a Jev rule's probability on its own examples
+uv run python scripts/bench_structure.py CORPUS_DIR # offline rules over a human/AI corpus
 ```
+
+Edit `scripts/gen_readme.py`, not `README.md`: the README is generated, so a hand edit is
+overwritten on the next run.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for how rules work and how to add one.
 

@@ -30,7 +30,7 @@ def build_parser() -> argparse.ArgumentParser:
         description="A small, fast prose linter. Flags AI writing tells and clarity problems with "
         "ruff-style rule codes, backed by TypeSafe's Jev model for the semantic rules.",
         epilog="Examples:\n  riff doc.md\n  riff -f report.docx --no-jev\n  riff *.md --select JEV,RIF1 --format json\n"
-        "  riff --list-rules\n  riff --explain JEV001",
+        "  riff --list-rules\n  riff --explain JEV001\n  riff --compare draft.md edited.md",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument("paths", nargs="*", help="files or http(s) URLs to lint (.md .txt .html .docx .pptx)")
@@ -54,6 +54,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--config", type=Path, help="path to a riff.toml or pyproject.toml")
     p.add_argument("--debug-jev", action="store_true",
                    help="print every Jev probability per block (to tune thresholds), even below threshold")
+    p.add_argument("--compare", nargs=2, metavar=("SOURCE", "REWRITE"),
+                   help="check an edit kept every claim: report numbers, names, quotes and code the rewrite lost "
+                   "or invented, and lost superlative, scope, negation and hedge constructions; exit 1 if any")
+    p.add_argument("--waive", action="append", default=[], metavar="TOKEN",
+                   help="with --compare: ignore findings whose token contains TOKEN (repeatable)")
     p.add_argument("--list-rules", action="store_true", help="print the rule catalog and exit")
     p.add_argument("--explain", metavar="CODE", help="print one rule's full explanation and exit")
     p.add_argument("--no-color", action="store_true", help="disable ANSI color")
@@ -135,6 +140,26 @@ def cmd_explain(code: str, stream=None) -> int:
     return 0
 
 
+def cmd_compare(source: str, rewrite: str, waive: list[str], fmt: str, stream=None) -> int:
+    """Exit 0 when every claim in SOURCE survives in REWRITE, 1 when something was lost or invented."""
+    import json
+
+    from riff.compare import as_json, compare, read_for_compare, render
+
+    stream = stream or sys.stdout
+    try:
+        changes = compare(read_for_compare(source), read_for_compare(rewrite), tuple(waive))
+    except (OSError, UnicodeDecodeError, ValueError) as exc:
+        print(f"riff --compare: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 2
+    label = f"{source} -> {rewrite}"
+    if fmt == "json":
+        print(json.dumps(as_json(changes, label), indent=2), file=stream)
+    else:
+        print(render(changes, label), file=stream)
+    return 1 if changes else 0
+
+
 def cmd_outline(paths: list[str], stream=None) -> int:
     """The hierarchy riff reads, per file: what section- and document-scope rules will see."""
     from riff.extract import extract
@@ -165,6 +190,8 @@ def main(argv: list[str] | None = None) -> int:
         return cmd_list_rules()
     if args.explain:
         return cmd_explain(args.explain)
+    if args.compare:
+        return cmd_compare(*args.compare, waive=args.waive, fmt=args.format)
 
     if args.no_color:
         import os

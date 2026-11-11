@@ -9,6 +9,7 @@ def load_rules() -> None:
     global _LOADED
     if _LOADED:
         return
-    from riff.rules import jev_rules, static_rules, structure_rules  # noqa: F401  (import registers rules)
+    # Importing a rule module registers its rules.
+    from riff.rules import jev_rules, register_rules, static_rules, structure_rules  # noqa: F401
 
     _LOADED = True

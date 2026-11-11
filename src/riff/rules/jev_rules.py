@@ -23,6 +23,18 @@ T = "tropes.fyi"
 W = "Williams, Style: Lessons in Clarity and Grace"
 E = "Strunk & White, The Elements of Style"
 
+
+def D(entry: int | str) -> str:  # noqa: N802 - reads like the other source constants at the call site
+    """The declauding register (Austegard, github.com/oaustegard/claude-skills, MIT), by entry number."""
+    return f"declauding register, entry {entry} (Austegard)"
+
+
+# The cluster of GitHub PR descriptions that grew from 0.70% of early 2025 to 39.5% of August 2026 (Louis
+# Abraham's load-bearing corpus, 461k descriptions), as analysed in declauding's references/corpus.md.
+CORPUS = "Abraham, load-bearing PR-description corpus, via declauding references/corpus.md"
+# Clark, Martin and Mahowald on syntactic compression in model output.
+COMPRESSION = "Clark, Martin & Mahowald, arXiv 2610.29162, via declauding entries 53-56"
+
 # ---------------------------------------------------------------- structure / composition (JEV0xx)
 
 jev_rule(
@@ -175,6 +187,51 @@ jev_rule(
     },
 )
 
+# Rules from the declauding register below are off by default until they are probed against the live model
+# (CONTRIBUTING, "Adding a Jev rule"). Each question carries the register's "earned when" case as not_for,
+# since every shape it names sometimes carries a real claim.
+
+jev_rule(
+    "JEV012", "no-discernible-point", "No single point a reader could state after reading it",
+    category="Composition",
+    source="declauding, workflow step 1a (Austegard); replies to Vinitsky's 2026-11-09 post on editing LLM text",
+    threshold=0.7, scope="document", default=False,
+    skip_for=("notes", "sms", "chat_message", "poem", "script", "resume", "presentation", "release_notes"),
+    explanation="Every sentence can be locally fine while the piece says little: readers of model drafts report "
+    "reaching the end of a page and not knowing what it said. Ask whether a reader could state, in one sentence of "
+    "their own, what the piece wants them to come away knowing, and whether most of its length bears on that. "
+    "Sentence-level rules cannot see this; the fix is to write the point first and rebuild from it, keeping only "
+    "what supports it. Asked once over the whole document.",
+    examples=("Four paragraphs on 'the evolving landscape of observability' that never say what to do or what changed.",),
+    question={
+        "question": "After reading this whole piece, would a reader be unable to say in one sentence what it wants "
+        "them to know or do, because it has no clear main point, or because most of its length is spent on "
+        "material that does not bear on that point?",
+        "not_for": "A piece with a clear point, even if it is long, digressive in places, or the point is stated "
+        "late; reference material (an API list, a glossary, a table) whose job is to be looked up rather than to "
+        "argue; and a piece that covers several items the reader asked for.",
+    },
+)
+
+jev_rule(
+    "JEV014", "contents-list-standfirst", "Opens with a contents list shaped as a sentence ('X, plus Y')",
+    category="Composition", source=D(42), threshold=0.72, scope="document", default=False,
+    skip_for=("presentation", "notes", "sms", "chat_message", "email", "letter"),
+    explanation="A subtitle or first line built as '<noun phrase>, plus <noun phrase>' -- 'The parameter surface, "
+    "plus the behavior the schema leaves out' -- is a table of contents wearing a sentence. The second half is "
+    "usually a coy reduced relative that claims value without naming any. Say what the page contains, or drop "
+    "the subtitle.",
+    examples=("The create_session parameter surface, plus the behavior the schema leaves out.",
+              "Our migration, and the three things you need to know."),
+    question={
+        "question": "Does this piece open (its first line, subtitle or standfirst) with a list of its contents "
+        "phrased as a sentence -- a noun phrase joined by 'plus' or 'and' to a teasing second noun phrase such as "
+        "'the part the docs skip' or 'the N things you need to know' -- instead of saying what it shows?",
+        "not_for": "An opening that states a fact, a finding or what the page contains in plain terms; an "
+        "ordinary title; and a first line that is the start of the argument itself.",
+    },
+)
+
 # ---------------------------------------------------------------- tone / voice (JEV1xx)
 
 jev_rule(
@@ -313,6 +370,57 @@ jev_rule(
     },
 )
 
+jev_rule(
+    "JEV113", "stranded-auxiliary", "A reversal that lands on a bare auxiliary ('The tool died; the data didn't.')",
+    category="Sentence Structure", source=D(49), threshold=0.72, default=False,
+    explanation="The auxiliary carries the reversal and the verb is elided, so the clause lands as a beat rather "
+    "than a fact: 'The tool died; the data didn't.' Say what the second half claims ('The rows already written "
+    "are still in the bucket').",
+    examples=("The tool died; the data didn't.", "Reading mostly passed. Writing didn't.", "Maybe it wouldn't have."),
+    question={
+        "question": "Does a clause or sentence here end on a bare auxiliary verb ('didn't', 'wasn't', 'won't', "
+        "'hasn't') to deliver a reversal as a dramatic beat, with the actual claim of that half left unstated?",
+        "not_for": "Ordinary ellipsis where the elided verb was just used and the contrast rides in the same "
+        "breath; and a contrast where both halves carry their measured facts ('reads passed on all 12 shards, "
+        "writes on none').",
+    },
+)
+
+jev_rule(
+    "JEV114", "welded-epigram", "A factual clause welded to a second clause restating it as a maxim",
+    category="Sentence Structure", source=D(39), threshold=0.72, default=False,
+    explanation="A clause that says what happens is joined by 'and' or 'so' to one that restates it as a general "
+    "truth: 'Entries the caller does not hold are dropped, so a child never carries a grant its parent lacks.' The "
+    "second clause has no concrete noun, would be true of any system, and drops the conditions that made the "
+    "first precise. It hides mid-sentence, so a check on paragraph closers misses it. Keep the first clause.",
+    examples=("Entries the caller does not hold are dropped, so a child never carries a grant its parent lacks.",
+              "The rest of the surface depends on this parameter, and the failure it prevents is silent."),
+    question={
+        "question": "Does a sentence here state a specific fact and then attach, with 'and' or 'so', a second "
+        "clause that restates that fact as a general, quotable truth with no new concrete information?",
+        "not_for": "A second clause that adds a new concrete consequence the reader has not seen (a number, a "
+        "named effect, what the user must do); and a whole standalone aphoristic sentence (JEV103).",
+    },
+)
+
+jev_rule(
+    "JEV115", "spec-ese", "Reads like a standards document instead of a person explaining",
+    category="Tone", source=D(40), threshold=0.72, default=False, skip_for=("academic_paper",),
+    explanation="A demonstrative subject where 'it' would do ('That child holds no repository'), reflexive "
+    "emphatics ('does not itself hold'), latinate state verbs for a program doing nothing ('idles', 'holds', "
+    "'carries', 'awaits'), and the actor displaced into a subordinate clause. The formality signals precision "
+    "without adding any. Use 'it', the verb you would say aloud, and name the reader where they are the actor.",
+    examples=("That child holds no repository and awaits input.", "Omit it and the child idles awaiting input."),
+    question={
+        "question": "Is this passage written in the stiff register of a standards document -- demonstrative "
+        "subjects like 'That process' where 'it' would do, reflexive emphatics like 'does not itself', or formal "
+        "state verbs like 'holds', 'carries', 'idles', 'awaits' for a program simply doing nothing -- rather than "
+        "the way a person would explain it aloud?",
+        "not_for": "Terms that are the system's own documented vocabulary (a state literally named 'waiting' or "
+        "'held'), quoted specification text, and normative language in an actual spec or RFC.",
+    },
+)
+
 # ---------------------------------------------------------------- substance (JEV2xx)
 
 jev_rule(
@@ -403,6 +511,72 @@ jev_rule(
     question={
         "question": "Does this passage rattle off a list of historical companies, products, or technological shifts "
         "to build authority or draw a sweeping parallel, rather than to make a specific point?",
+    },
+)
+
+jev_rule(
+    "JEV209", "exhaustive-negation", "An absolute negative stands in for the evidence ('nothing else could cause it')",
+    category="Substance", source=f"{D(47)}; {CORPUS}", threshold=0.72, default=False,
+    explanation="'Nothing in the fit varies with time', 'there is nowhere else for it to be', 'no path reaches "
+    "it'. A universal negative is the strongest claim and the most expensive to establish, so it is the cheapest "
+    "to assert; it is a claim about a search the reader never sees. 'nobody', 'nowhere' and 'nothing' are all in "
+    "the corpus cluster's top twenty-five words. State the scope actually checked.",
+    examples=("Nothing in the fit varies with time.", "There is nowhere else for the rise to be."),
+    question={
+        "question": "Does this passage rest a claim on an absolute negative -- 'nothing', 'nobody', 'nowhere', "
+        "'no path', 'never' -- asserted as the finding itself, without naming the bounded set or the mechanism "
+        "that was checked to establish it?",
+        "not_for": "A negative over a set the reader can see ('none of the 46 chunks exceeds 0.57%'); a negative "
+        "that follows from a stated exhaustive mechanism ('the enum has three members and the switch covers all "
+        "three'); and an ordinary factual denial ('the API does not return a cursor').",
+    },
+)
+
+jev_rule(
+    "JEV210", "totalizing-designation", "Claims a total where a part was shown ('that's the whole point')",
+    category="Substance", source=D(51), threshold=0.72, default=False,
+    explanation="'That's the whole point', 'the entire business model is X', 'the only marketing I trust'. The "
+    "total claims the rest is decoration, and 'the only X' ranks a field whose other members are never named, "
+    "so there is nothing to check or disagree with. State the part, and let it be a part.",
+    examples=("That's the whole point of the format.", "Changelogs are the only release notes I trust."),
+    question={
+        "question": "Does this passage declare something 'the whole point', 'the entire X', 'the only thing that "
+        "matters' or 'the only X I trust', claiming a total or a ranking over an unnamed set instead of stating "
+        "the specific part that was shown?",
+        "not_for": "A real count of one over a named set ('the only one of the six runs that finished').",
+    },
+)
+
+jev_rule(
+    "JEV211", "retroactive-significance", "Grades a passage the reader already read ('that's why X mattered')",
+    category="Substance", source=D(50), threshold=0.72, default=False,
+    explanation="'That's why being able to open the environment mattered.' Telling the reader which earlier "
+    "sentence mattered admits the earlier sentence did not carry it. If it did not, fix the earlier passage; "
+    "otherwise cut the grade.",
+    examples=("That's why being able to open the environment mattered.", "This is why keeping every transcript counted."),
+    question={
+        "question": "Does this passage look back and tell the reader that something already described 'mattered', "
+        "'counted' or was 'why' something worked, grading earlier content rather than adding new information?",
+        "not_for": "A 'which is why' that introduces a new consequence the reader has not yet seen.",
+    },
+)
+
+jev_rule(
+    "JEV212", "speculative-gap-filling", "Writes about a missing source, then fills the gap with a stock guess",
+    category="Substance", source=D(33), threshold=0.7, default=False,
+    explanation="'While specific details are limited', 'based on available information', 'maintains a low "
+    "profile', 'likely grew up in', 'as of my last update'. Two tells with one cause: the writer cannot find a "
+    "source, says so in a sentence about the search rather than the subject, then supplies an unsourced guess. "
+    "Say what is not known, or cut it; never dress the guess as fact.",
+    examples=("Information about her early life is not publicly available, suggesting she maintains a low profile.",
+              "She likely grew up in a middle-class household."),
+    question={
+        "question": "Does this passage comment on the lack of available information or sources ('details are "
+        "limited', 'not publicly available', 'based on available information', 'as of my last update') or fill "
+        "such a gap with a stock, unsourced guess ('likely grew up', 'it is believed that', 'maintains a low "
+        "profile')?",
+        "not_for": "A plain, specific statement of what a named source does or does not cover ('the 2019 filing "
+        "does not list her salary'), and real uncertainty stated with its reason.",
     },
 )
 
@@ -499,6 +673,84 @@ jev_rule(
     },
 )
 
+# Flat certainty (declauding entries 43-47): the register a clean pass lands in once staging is gone, and the
+# fastest-growing cluster in the PR-description corpus. These sentences perform having SETTLED a finding --
+# adjudicated, verified, exhaustively negated -- the way staging performs having had one. JEV209 (exhaustive
+# negation) and CLR013 (the cluster's vocabulary rate) belong to the same family.
+
+jev_rule(
+    "JEV309", "certainty-adverb", "A bare adverb asserts the evidence ('plainly', 'provably', 'outright')",
+    category="Word Choice", source=f"{D(43)}; {CORPUS}", threshold=0.72, default=False,
+    explanation="'plainly', 'quietly', 'outright', 'merely', 'genuinely', 'deliberately', 'provably', "
+    "'demonstrably', 'structurally', 'silently'. The adverb asserts the reader's reaction -- that this is obvious, "
+    "that the check was real -- where the sentence has not shown it. 'Provably correct' without the proof is "
+    "'correct' in a costume. 'plainly' and 'quietly' are the corpus cluster's second and third highest-lift "
+    "words. Delete it, or replace it with what makes it true. JEV302 covers adverbs that inflate significance "
+    "('fundamentally', 'remarkably'); this one covers adverbs that assert certainty or verification.",
+    examples=("The retry is provably safe.", "The flag was quietly dropped in 4.2.", "This is plainly a bug."),
+    question={
+        "question": "Does this passage use an adverb such as 'plainly', 'provably', 'demonstrably', 'outright', "
+        "'merely', 'genuinely', 'deliberately', 'structurally' or 'quietly' to assert that something is obvious, "
+        "proven, intended or real, in place of the evidence that would show it?",
+        "not_for": "An adverb naming a contrast the reader can check ('silently' against a version that logs, "
+        "'identically' against one that differs); an adverb with its evidence beside it; and an adverb that "
+        "inflates significance rather than certainty (JEV302).",
+    },
+)
+
+jev_rule(
+    "JEV310", "verification-compound", "A compound claims how it was checked ('byte-identical', 're-derived')",
+    category="Word Choice", source=f"{D(45)}; {CORPUS}", threshold=0.7, default=False,
+    explanation="'byte-identical', 'bit-for-bit', 'mutation-checked', 'live-verified', 'cross-checked', "
+    "'root-caused', 're-derived', 're-verified', 're-measured'. The compound is a claim about method pressed into "
+    "an adjective, which puts it past the point where a reader would ask for the method; eleven of the corpus "
+    "cluster's top hundred words have this shape, arriving with agents that report on their own work. State "
+    "what was run and what came back.",
+    examples=("The rewrite is byte-identical and mutation-checked.", "I re-derived the threshold.",
+              "Root-caused and live-verified."),
+    question={
+        "question": "Does this passage use a hyphenated or 're-' compound that asserts how thoroughly something "
+        "was checked -- 'byte-identical', 'mutation-checked', 'live-verified', 'cross-checked', 'root-caused', "
+        "'re-derived', 're-verified' -- without stating what was run and what result came back?",
+        "not_for": "A compound with its evidence beside it (the diff, the command, the counts, the named cause), "
+        "and a 're-' verb whose first pass is on the page and whose second pass disagreed with it.",
+    },
+)
+
+jev_rule(
+    "JEV311", "juridical-register", "Code or a process described as a court ('refuses', 'ruling', 'carve-out')",
+    category="Word Choice", source=f"{D(44)}; {CORPUS}", threshold=0.72, default=False,
+    explanation="'The guard refuses any caller without standing.' 'That is the carve-out the header check "
+    "honors.' Legal vocabulary -- refusal, ruling, verdict, precedent, carve-out, standing, remedy, obligation, "
+    "honoured -- borrows finality from a domain that has procedures for producing it. A linter does not rule; it "
+    "exits non-zero. 'refusal' is the corpus cluster's fourth highest-lift word. Name the mechanism and its exit "
+    "condition ('returns 403 when the token has no write scope').",
+    examples=("The guard refuses any caller without standing.", "That is the carve-out the header check honors."),
+    question={
+        "question": "Does this passage describe software, tests or a technical process in legal or courtroom "
+        "terms -- refuses, declines, rules, verdict, precedent, carve-out, standing, grounds, remedy, obligation, "
+        "honors, ratified -- where naming the actual mechanism and its condition would be clearer?",
+        "not_for": "The system's own documented vocabulary (a policy engine whose API says 'deny', an RFC's MUST), "
+        "and text that is actually about law, policy or governance.",
+    },
+)
+
+jev_rule(
+    "JEV312", "privative-coinage", "Names a thing by what was not done to it ('ungated', 'unwired', 'vacuous')",
+    category="Word Choice", source=f"{D(46)}; {CORPUS}", threshold=0.72, default=False,
+    explanation="'Three of the paths are unguarded.' 'The hook is unwired.' 'The assertion is vacuous.' The "
+    "coinage sounds like a diagnosis and carries no measurement; several are not words outside this register. "
+    "Say what is missing, and where ('three paths have no length check before the index').",
+    examples=("Three of the paths are unguarded.", "The hook is unwired.", "The assertion is vacuous."),
+    question={
+        "question": "Does this passage label something with a coined 'un-' or privative adjective -- ungated, "
+        "unguarded, unwired, uncapped, unmeasured, unverifiable, vacuous, inert -- as if it were a diagnosis, "
+        "instead of saying what specifically is missing and where?",
+        "not_for": "A term of art in the reader's field ('unsatisfiable' in SAT, an 'unbuilt' build target, "
+        "'unsigned' integer); and a privative used once to name the finding before the detail that follows it.",
+    },
+)
+
 # ---------------------------------------------------------------- clarity & grammar, Williams (JEV4xx)
 
 jev_rule(
@@ -542,6 +794,79 @@ jev_rule(
     question={
         "question": "Does this passage hedge a claim with vague qualifiers ('somewhat', 'arguably', 'in many ways', "
         "'to some extent', 'perhaps') in a way that weakens it without adding real precision?",
+    },
+)
+
+# Compressed syntax (declauding entries 53-56, from Clark, Martin & Mahowald): nothing is staged, but a claim is
+# packed into fewer words than a reader can parse. Models overuse these constructions relative to human text in
+# the same genre, most in chat and coding-session output. The fix usually makes the sentence LONGER, which is
+# why a pass aimed only at brevity produces these shapes instead of removing them.
+
+jev_rule(
+    "JEV405", "noun-stack", "Three or more nouns stacked as modifiers ('dry-run write prevention')",
+    category="Clarity", source=f"{D(53)}; {COMPRESSION}", threshold=0.72, default=False,
+    explanation="'reader-patience budget', 'Policy 1's class-time shutdown requirement', 'dry-run write "
+    "prevention'. English never marks how stacked nouns group, so the reader has to work out the bracketing and "
+    "supply the relation the writer left out. Unstack into a phrase with prepositions, or a clause that names the "
+    "relation ('check that a dry run writes nothing').",
+    examples=("New tests for paths with spaces, dry-run write prevention, and idempotent config reinstalls.",
+              "Policy 1's class-time shutdown requirement directly addresses this."),
+    question={
+        "question": "Does this passage stack three or more nouns in a row, each modifying the next (often with a "
+        "hyphen fusing two of them), so the reader must work out how they group and what relation links them?",
+        "not_for": "An established term in the reader's field ('foreign key constraint', 'money market fund'), a "
+        "product or proper name, and a stack the document defines once and then reuses as a name.",
+    },
+)
+
+jev_rule(
+    "JEV406", "verbed-noun", "An ad-hoc noun used as a verb ('footnote it', 'bucket them')",
+    category="Clarity", source=f"{D(54)}; {COMPRESSION}", threshold=0.75, default=False,
+    explanation="'footnote it', 'calendar it', 'ticket that', 'this papercuts every new user'. Readers parse a "
+    "word as the part of speech they expect, so an ad-hoc conversion forces a second look; it saves two words and "
+    "spends them back as reanalysis. Use a plain verb with the noun as its object ('move it to a footnote').",
+    examples=("Footnote it.", "This papercuts every new user.", "Let's ticket that and bucket the rest."),
+    question={
+        "question": "Does this passage use a noun as a verb in a way that is not standard ('footnote it', "
+        "'calendar it', 'papercuts every user'), forcing the reader to reparse it, where a plain verb with the noun "
+        "as its object would read at once?",
+        "not_for": "Conversions that are standard in general use or the reader's field ('email', 'bottle', "
+        "'scope', 'shard', 'gate a release', 'stage a change'), and quoted speech.",
+    },
+)
+
+jev_rule(
+    "JEV407", "dropped-that", "Optional 'that' left out of a long clause, so the clause boundary is invisible",
+    category="Clarity", source=f"{D(55)}; {COMPRESSION}; Levy & Jaeger 2007", threshold=0.75, default=False,
+    explanation="'The others check behaviour the old code never reached.' 'We found the cache key omitted the "
+    "locale.' People drop 'that' where what follows is predictable and keep it where it is not; without it, two "
+    "noun phrases sit side by side and nothing tells the reader a clause has begun. Put 'that' back when the "
+    "clause runs past a few words or its subject is a noun phrase the reader has not met.",
+    examples=("The others check behaviour the old code never reached.", "We found the cache key omitted the locale."),
+    question={
+        "question": "Does a sentence here leave out an optional 'that' before a relative or complement clause whose "
+        "subject is a new noun phrase or which runs on for several words, so the reader cannot tell where the "
+        "clause begins without rereading?",
+        "not_for": "A short clause after a common verb where the reader expects it ('the book I read', 'I think "
+        "the build is broken').",
+    },
+)
+
+jev_rule(
+    "JEV408", "distant-verb", "Subject held apart from its verb by a list or aside",
+    category="Clarity", source=f"{D(56)}; {COMPRESSION}; Gibson 1998", threshold=0.72, default=False,
+    explanation="'All five expression shapes -- attribute access, subscript, calls, nested calls, string literals "
+    "-- leave current on NAME('b').' The reader holds the subject in memory until the verb arrives, and the cost "
+    "grows with the distance. Give the verb early: move the list or aside after the main clause or into its own "
+    "sentence.",
+    examples=("All five expression shapes -- attribute access, subscript, calls, nested calls, string literals -- "
+              "leave current on NAME('b').",),
+    question={
+        "question": "Does a sentence here hold its subject far apart from its main verb with an inserted list, a "
+        "dash-delimited aside or a long appositive, so the reader must carry the subject across it before learning "
+        "what it does?",
+        "not_for": "A short list of two or three brief items, and a subject that is long because it is a quoted "
+        "name or title.",
     },
 )
 
@@ -647,6 +972,27 @@ jev_rule(
         "that a reader in the intended audience would likely not recognize?",
         "not_for": "Widely-known tech terms and acronyms, product/tool/library names, the document's own defined "
         "terms, or a term the surrounding text defines or links.",
+    },
+)
+
+jev_rule(
+    "JEV603", "diff-anchored-docs", "Documentation that narrates a change instead of describing the current state",
+    category="Documentation", source=f"{D(34)}; declauding step 4a (the newcomer read)", threshold=0.72,
+    default=False, applies_to=("documentation",),
+    explanation="Written from the diff that produced it: 'this function was added to replace', 'we now use', "
+    "'the previous approach was', 'pick your options here, upright' (written after the options moved off a "
+    "sideways screen). It reads coherently only to someone who saw the last change; six months later nobody did. "
+    "Describe how the thing behaves now. The change belongs in the commit message or the changelog. JEV011 "
+    "covers notes about edits to the document itself; this covers prose about the thing that leans on its "
+    "previous version.",
+    examples=("This function was added to replace the previous approach of iterating through all items.",
+              "We now store sessions in Redis instead of on disk."),
+    question={
+        "question": "Does this documentation describe how the thing changed -- what was added, replaced or "
+        "updated, what 'now' happens, what the previous approach was -- or lean on an earlier version the reader "
+        "never saw, instead of describing how it currently works?",
+        "not_for": "Changelogs, release notes, migration and upgrade guides, deprecation notices, and a "
+        "'history' or 'background' section whose job is to describe the change.",
     },
 )
 
@@ -800,6 +1146,52 @@ jev_rule(
     },
 )
 
+# Document headings. A deck's titles should be claims (JEV701), and so should a report's or memo's (Minto);
+# a doc's or a blog post's headings are navigation, and fail in two opposite directions: a coy or verdict
+# heading that performs the finding, and the abstract-noun label written in flight from one.
+
+jev_rule(
+    "JEV704", "verdict-heading", "A coy, thesis-shaped or obituary heading where a plain label belongs",
+    category="Narrative", source=f"{D(7)}; {D(52)}", threshold=0.75, scope="title", default=False,
+    applies_to=("documentation", "blog_post"),
+    explanation="Headings in docs and posts are for finding your place. A coy heading ('What actually matters', "
+    "'Why this works') could top three different sections; a thesis-shaped one ('The cache was never the "
+    "problem') performs the finding before the section shows it; an obituary headline ('Code review is dead', "
+    "'Long live X') states a verdict in a form built to overstate, and the body spends its first paragraph "
+    "walking it back. Name the content, or name what changed ('Three of four teams dropped second approvals'). "
+    "Gated to documentation and blog posts: reports, memos and decks are supposed to state their claims in "
+    "their titles.",
+    examples=("What actually matters", "The cache was never the problem", "Peer code review is dead"),
+    question={
+        "question": "Is this heading coy, thesis-shaped or an obituary headline -- a teaser like 'What actually "
+        "matters' or 'Why this works' that could head any section, a verdict the section has not yet shown ('The "
+        "cache was never the problem'), or an 'X is dead' / 'long live X' / 'the death of X' declaration -- "
+        "rather than a plain label for what the section contains?",
+        "not_for": "A real question the section answers ('How do I rotate a key?'), a plain descriptive label, a "
+        "heading that states a concrete measured fact the section then supports, and a phrase quoted from or "
+        "naming something else (a cited post, a product's announced end of life).",
+    },
+)
+
+jev_rule(
+    "JEV705", "abstract-heading", "A heading whose head noun is an abstraction ('Spawn availability')",
+    category="Narrative", source=D(41), threshold=0.75, scope="title", default=False, skip_for=("presentation",),
+    explanation="'GitHub authorship in a sourced child', 'Spawn availability', 'Detecting a parked child'. A "
+    "heading built on an abstract noun (-tion, -ment, -ity, -ship) or a bare gerund names a topic area, so a "
+    "reader scanning the outline learns only what they already knew. It is the standard overcorrection from a "
+    "verdict heading (JEV704): fleeing a verdict into an abstraction is not a fix. Name the concrete thing, or "
+    "ask the reader's question ('Who the delegate posts as', 'When create_session fails').",
+    examples=("Spawn availability", "GitHub authorship in a sourced child", "Channels between siblings"),
+    question={
+        "question": "Is this heading built on an abstract noun or a bare gerund -- like 'Spawn availability', "
+        "'Authorship in a sourced child' or 'Detecting a parked child' -- that names a topic area rather than the "
+        "concrete thing, behaviour or question the section covers?",
+        "not_for": "A single-word heading for a term the document defines ('Calibration', 'Provenance'); "
+        "conventional headings such as 'Installation', 'Configuration', 'Usage', 'Introduction' or 'References'; "
+        "and the title of a cover, agenda or closing slide.",
+    },
+)
+
 jev_rule(
     "JEV711", "ghost-deck", "The titles, read in order, don't tell the argument on their own",
     category="Narrative", source=MINTO + "; the consultant's 'ghost deck' test", threshold=0.75,
@@ -828,7 +1220,7 @@ jev_rule(
 # quotable line.
 
 _FRAGMENT_RULES = ("JEV101", "JEV102", "JEV104", "JEV110", "JEV204", "JEV301", "JEV302", "JEV303", "JEV304",
-                   "JEV306", "JEV403", "JEV502", "JEV503")
+                   "JEV306", "JEV309", "JEV310", "JEV311", "JEV312", "JEV403", "JEV405", "JEV502", "JEV503")
 # Not JEV207 (boilerplate): a label is generic by nature -- "Security for machine identity" -- and the
 # rule needs a claim to judge.
 

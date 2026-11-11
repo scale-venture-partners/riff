@@ -8,8 +8,43 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 - Main-content extraction crashed on nested elements with chrome roles.
+- README: install from PyPI (`riff-lint`); the repository is public; document the OpenAI Decisions API
+  backend, the `extend-ignore`, `classify`, `type` and `jev-concurrency` settings, and the flags the usage
+  list left out; the by-type source table is now generated from the rules, so it lists only sources a
+  rule cites. The example `riff.toml` no longer names a `WRD` rule prefix that does not exist.
 
 ### Added
+- Rules ported from the [declauding](https://github.com/oaustegard/claude-skills) register (Austegard,
+  MIT). All are **off by default** until they are probed against the live model and benched; enable them
+  with `--extend-select`. Each Jev question carries the register's "earned when" case as `not_for`.
+  - The draft's point: `JEV012` no-discernible-point (a reader could not say what the piece wants them to
+    know) and `JEV014` contents-list-standfirst ("X, plus the part the docs skip").
+  - Flat certainty, the register of the fastest-growing cluster of GitHub PR descriptions (0.70% of early
+    2025, 39.5% of August 2026, in Louis Abraham's load-bearing corpus): `JEV309` certainty-adverb
+    ("plainly", "provably"), `JEV310` verification-compound ("byte-identical", "re-derived"), `JEV311`
+    juridical-register ("refuses", "carve-out"), `JEV312` privative-coinage ("ungated", "vacuous"),
+    `JEV209` exhaustive-negation, and `CLR013` flat-certainty-register, the cluster's top-150 vocabulary
+    per 100 words (a register locator, not an authorship detector).
+  - Compressed syntax (Clark, Martin & Mahowald): `JEV405` noun-stack, `JEV406` verbed-noun, `JEV407`
+    dropped-that, `JEV408` distant-verb.
+  - Staging and substance: `JEV113` stranded-auxiliary ("The tool died; the data didn't."), `JEV114`
+    welded-epigram, `JEV115` spec-ese, `JEV210` totalizing-designation ("that's the whole point"), `JEV211`
+    retroactive-significance ("that's why X mattered"), `JEV212` speculative-gap-filling, and `JEV603`
+    diff-anchored-docs (documentation that narrates the change instead of the current state).
+  - Headings in docs and posts: `JEV704` verdict-heading (coy, thesis-shaped, or "X is dead") and `JEV705`
+    abstract-heading ("Spawn availability"). Decks keep `JEV701`, which wants claims.
+  - Counting checks: `CLR014` echoed-skeleton (adjacent sentences on one word-for-word template), `CLR015`
+    anaphora-run (three sentences or clauses opening on the same two words), and `RIF010` predicate-hyphen
+    ("the team is cross-functional", flagged at two or more). The repetition checks skip documentation,
+    release notes, notes, resumes, decks, poems and scripts.
+- `riff --compare SOURCE REWRITE` checks that an edit kept every claim: numbers, names, quotations, code
+  and link targets lost or invented, and lost superlative, scope, negation and hedge constructions. Exit `1`
+  on a finding; `--waive TOKEN` for rephrasings. Ported from declauding's `declaude_diff.py`.
+- A false-positive budget: `tests/test_false_positives.py` requires every offline rule, on or off by
+  default, to report nothing on the clean controls in `tests/fixtures/human/` and on the Python standard
+  library's own docstrings.
+- `scripts/probe_rules.py` prints a Jev rule's probability on its own examples and on a plain control, the
+  probe CONTRIBUTING asks for before a rule is turned on.
 - Structure rules. Hard norms from the Google and APA style guides: `RIF006` heading hierarchy (skipped
   levels, lone subsection, second h1), `RIF007` heading form (numbered, linked or emoji headings),
   `RIF008` changelog shape (Keep a Changelog), `RIF009` single-item list. Statistics: `CLR008` uniform

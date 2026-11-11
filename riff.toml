@@ -2,10 +2,10 @@
 # either full codes (JEV001) or prefixes (JEV, RIF1). Command-line flags override this file.
 
 # Leave `select` unset to run every default-on rule. Uncomment to restrict.
-# select = ["RIF", "WRD", "CLR", "JEV"]
+# select = ["RIF", "CLR", "JEV"]
 
-ignore = []            # e.g. ["WRD001"] to stop flagging overused vocabulary
-extend-select = []     # e.g. ["WRD104"] to turn on passive-voice detection
+ignore = []            # e.g. ["JEV301"] to stop flagging overused AI vocabulary
+extend-select = []     # e.g. ["JEV401"] to turn on passive-voice detection
 jev = true             # set false (or pass --no-jev) to skip the semantic rules
 model = "jev-latest"
 
