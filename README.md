@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/scale-venture-partners/riff/actions/workflows/ci.yml/badge.svg)](https://github.com/scale-venture-partners/riff/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/riff-lint.svg)](https://pypi.org/project/riff-lint/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/scale-venture-partners/riff/blob/main/LICENSE)
 
 A small, fast prose linter. It reads a document, flags the writing tells and clarity
 problems it finds, and reports them with **ruff-style rule codes** you can select, ignore,
@@ -38,8 +38,8 @@ riff --help
 uvx --from riff-lint riff draft.md   # run once without installing
 ```
 
-The PyPI release can lag `main`; compare `riff --version` with the [changelog](CHANGELOG.md). To
-run the latest code from GitHub:
+The PyPI release can lag `main`; compare `riff --version` with the
+[changelog](https://github.com/scale-venture-partners/riff/blob/main/CHANGELOG.md). To run the latest code from GitHub:
 
 ```console
 uv tool install git+https://github.com/scale-venture-partners/riff
@@ -488,8 +488,9 @@ uv run python scripts/bench_structure.py CORPUS_DIR # offline rules over a human
 Edit `scripts/gen_readme.py`, not `README.md`: the README is generated, so a hand edit is
 overwritten on the next run.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for how rules work and how to add one.
+See [CONTRIBUTING.md](https://github.com/scale-venture-partners/riff/blob/main/CONTRIBUTING.md)
+for how rules work and how to add one.
 
 ## License
 
-[MIT](LICENSE) © Scale Venture Partners.
+[MIT](https://github.com/scale-venture-partners/riff/blob/main/LICENSE) © Scale Venture Partners.
